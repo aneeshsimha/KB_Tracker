@@ -29,9 +29,26 @@
 		B45711F22F199D60000EF355 /* KB_TrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KB_TrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B45711DB2F199D5F000EF356 /* Exceptions for "KB_Tracker" folder in "KB_Tracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Components/PLAN.md,
+				Design/PLAN.md,
+				Models/PLAN.md,
+				Utilities/PLAN.md,
+				Views/PLAN.md,
+			);
+			target = B45711D82F199D5E000EF355 /* KB_Tracker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B45711DB2F199D5E000EF355 /* KB_Tracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B45711DB2F199D5F000EF356 /* Exceptions for "KB_Tracker" folder in "KB_Tracker" target */,
+			);
 			path = KB_Tracker;
 			sourceTree = "<group>";
 		};
