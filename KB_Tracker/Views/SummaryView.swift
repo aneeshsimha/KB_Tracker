@@ -14,6 +14,7 @@ struct SummaryView: View {
 
     @State private var notes: String = ""
     @State private var showBreakdown: Bool = false
+    @State private var showDiscardAlert: Bool = false
 
     var body: some View {
         ZStack {
@@ -21,10 +22,18 @@ struct SummaryView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Title
-                    Text("WORKOUT COMPLETE")
-                        .font(AppTypography.title)
-                        .foregroundColor(AppColors.textPrimary)
+                    // Header with discard option
+                    HStack {
+                        Text("WORKOUT COMPLETE")
+                            .font(AppTypography.title)
+                            .foregroundColor(AppColors.textPrimary)
+                        Spacer()
+                        Button(action: { showDiscardAlert = true }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(AppColors.textSecondary)
+                        }
+                    }
 
                     // Main stats
                     VStack(alignment: .leading, spacing: 16) {
@@ -90,6 +99,15 @@ struct SummaryView: View {
             }
         }
         .navigationBarHidden(true)
+        .interactiveDismissDisabled()
+        .alert("Discard Workout?", isPresented: $showDiscardAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Discard", role: .destructive) {
+                dismiss()
+            }
+        } message: {
+            Text("This workout will not be saved.")
+        }
     }
 
     // MARK: - Components

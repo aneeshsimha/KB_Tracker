@@ -104,6 +104,7 @@ struct HomeView: View {
             Text("ROUNDS").tag(WorkoutMode.rounds)
         }
         .pickerStyle(.segmented)
+        .colorMultiply(AppColors.textPrimary)
     }
 
     // MARK: - Start Button
