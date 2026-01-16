@@ -15,6 +15,8 @@ struct KB_TrackerApp: App {
             NavigationStack {
                 HomeView()
             }
+            .preferredColorScheme(.dark)
+            .tint(AppColors.accent)
         }
         .modelContainer(for: WorkoutSession.self)
     }

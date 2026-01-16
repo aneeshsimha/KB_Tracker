@@ -39,6 +39,9 @@ struct HistoryView: View {
         }
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppColors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
     private func sessionRow(_ session: WorkoutSession) -> some View {
