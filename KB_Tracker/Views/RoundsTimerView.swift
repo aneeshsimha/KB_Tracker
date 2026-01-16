@@ -101,7 +101,10 @@ struct RoundsTimerView: View {
         }
         .navigationDestination(isPresented: $navigateToSummary) {
             if let session = completedSession ?? partialSession {
-                SummaryView(session: session)
+                SummaryView(session: session) {
+                    // Exit the entire workout flow back to HomeView
+                    dismiss()
+                }
             }
         }
     }

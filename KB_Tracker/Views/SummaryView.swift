@@ -8,6 +8,7 @@ import SwiftData
 
 struct SummaryView: View {
     let session: WorkoutSession
+    var onSaveComplete: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -156,8 +157,13 @@ struct SummaryView: View {
         session.isCompleted = true
         modelContext.insert(session)
 
-        // Navigate back to home
+        // Dismiss this view first
         dismiss()
+        
+        // Then dismiss the timer view to exit the entire workout flow
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            onSaveComplete?()
+        }
     }
 
     // MARK: - Helpers

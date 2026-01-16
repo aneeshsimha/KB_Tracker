@@ -71,6 +71,12 @@ struct HomeView: View {
         .onAppear {
             prefillFromLastSession()
         }
+        .onChange(of: mode) { _, newValue in
+            // Sync rounds with EMOM minutes when switching to ROUNDS mode
+            if newValue == .rounds {
+                targetRounds = targetMinutes
+            }
+        }
         .navigationBarHidden(true)
     }
 
