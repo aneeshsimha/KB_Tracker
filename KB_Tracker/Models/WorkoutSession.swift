@@ -60,6 +60,7 @@ final class WorkoutSession {
     }
 }
 
+// MARK: - Computed Properties
 extension WorkoutSession {
     // Display string for weight (e.g., "2×20kg" or "20kg")
     var weightDisplay: String {

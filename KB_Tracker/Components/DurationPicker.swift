@@ -7,9 +7,9 @@ import SwiftUI
 
 struct DurationPicker: View {
     let mode: WorkoutMode
-    @Binding var minutes: Int
-    @Binding var rounds: Int
-    @Binding var restSeconds: Int
+    @Binding var minutes: Int          // EMOM mode
+    @Binding var rounds: Int           // Rounds mode
+    @Binding var restSeconds: Int      // Rounds mode
 
     // Minute options: 10, 12, 15, 18, 20, 22, 25, 30
     private let minuteOptions = [10, 12, 15, 18, 20, 22, 25, 30]
@@ -71,28 +71,23 @@ struct DurationPicker: View {
     }
 }
 
-#Preview("EMOM Mode") {
+#Preview {
     ZStack {
         AppColors.background.ignoresSafeArea()
-        DurationPicker(
-            mode: .emom,
-            minutes: .constant(20),
-            rounds: .constant(15),
-            restSeconds: .constant(60)
-        )
-        .padding()
-    }
-}
-
-#Preview("Rounds Mode") {
-    ZStack {
-        AppColors.background.ignoresSafeArea()
-        DurationPicker(
-            mode: .rounds,
-            minutes: .constant(20),
-            rounds: .constant(15),
-            restSeconds: .constant(60)
-        )
+        VStack(spacing: 40) {
+            DurationPicker(
+                mode: .emom,
+                minutes: .constant(20),
+                rounds: .constant(15),
+                restSeconds: .constant(60)
+            )
+            DurationPicker(
+                mode: .rounds,
+                minutes: .constant(20),
+                rounds: .constant(15),
+                restSeconds: .constant(60)
+            )
+        }
         .padding()
     }
 }
