@@ -12,7 +12,9 @@ import SwiftData
 struct KB_TrackerApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            NavigationStack {
+                HomeView()
+            }
         }
         .modelContainer(for: WorkoutSession.self)
     }

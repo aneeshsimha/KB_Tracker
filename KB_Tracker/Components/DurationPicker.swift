@@ -7,9 +7,9 @@ import SwiftUI
 
 struct DurationPicker: View {
     let mode: WorkoutMode
-    @Binding var minutes: Int
-    @Binding var rounds: Int
-    @Binding var restSeconds: Int
+    @Binding var minutes: Int          // EMOM mode
+    @Binding var rounds: Int           // Rounds mode
+    @Binding var restSeconds: Int      // Rounds mode
 
     // Minute options: 10, 12, 15, 18, 20, 22, 25, 30
     private let minuteOptions = [10, 12, 15, 18, 20, 22, 25, 30]
