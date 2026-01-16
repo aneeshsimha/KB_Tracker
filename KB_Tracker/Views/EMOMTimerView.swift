@@ -38,6 +38,7 @@ struct EMOMTimerView: View {
     @State private var showExitConfirmation: Bool = false
     @State private var navigateToSummary: Bool = false
     @State private var completedSession: WorkoutSession? = nil
+    @State private var partialSession: WorkoutSession? = nil
 
     // Timer publisher
     let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
@@ -77,14 +78,17 @@ struct EMOMTimerView: View {
         }
         .alert("Exit Workout?", isPresented: $showExitConfirmation) {
             Button("Cancel", role: .cancel) { }
-            Button("Exit", role: .destructive) {
+            Button("Save Progress", role: .none) {
+                savePartialWorkout()
+            }
+            Button("Discard", role: .destructive) {
                 dismiss()
             }
         } message: {
-            Text("Your progress will not be saved.")
+            Text("Would you like to save your progress or discard this workout?")
         }
         .navigationDestination(isPresented: $navigateToSummary) {
-            if let session = completedSession {
+            if let session = completedSession ?? partialSession {
                 SummaryView(session: session)
             }
         }
@@ -271,6 +275,24 @@ struct EMOMTimerView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             navigateToSummary = true
         }
+    }
+
+    private func savePartialWorkout() {
+        // Create partial workout session with current progress
+        let session = WorkoutSession(
+            mode: .emom,
+            kettlebellType: kettlebellType,
+            weight: weight,
+            targetRounds: targetMinutes,
+            restDuration: nil
+        )
+        session.completedRounds = currentRound
+        session.totalDuration = totalElapsed
+        session.setTimes = setTimes
+        session.isCompleted = false  // Mark as incomplete since user exited early
+
+        partialSession = session
+        navigateToSummary = true
     }
 
     // MARK: - Computed Properties
