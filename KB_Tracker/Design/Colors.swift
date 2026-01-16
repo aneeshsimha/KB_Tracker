@@ -6,7 +6,8 @@
 import SwiftUI
 
 extension Color {
-    /// Initialize a Color from a hex string (e.g., "#FF0000" or "FF0000")
+    /// Initialize a Color from a hex string
+    /// - Parameter hex: Hex color string (e.g., "#FF0000" or "FF0000")
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
@@ -35,11 +36,30 @@ extension Color {
 }
 
 struct AppColors {
-    static let background = Color(hex: "#050505")      // Near-black
-    static let surface = Color(hex: "#111111")         // Cards, elevated surfaces
-    static let border = Color(hex: "#222222")          // Subtle borders
-    static let textPrimary = Color.white               // Main text
-    static let textSecondary = Color(hex: "#666666")   // Secondary/muted text
-    static let accent = Color.white                    // Buttons, highlights
-    static let warning = Color(hex: "#FF3B30")         // Overtime indicator
+    // MARK: - Background Colors
+
+    /// Near-black background for the main app
+    static let background = Color(hex: "#050505")
+
+    /// Slightly elevated surface color for cards and containers
+    static let surface = Color(hex: "#111111")
+
+    /// Subtle border color for separators and outlines
+    static let border = Color(hex: "#222222")
+
+    // MARK: - Text Colors
+
+    /// Primary text color (white)
+    static let textPrimary = Color.white
+
+    /// Secondary/muted text color
+    static let textSecondary = Color(hex: "#666666")
+
+    // MARK: - Accent Colors
+
+    /// Accent color for buttons and highlights
+    static let accent = Color.white
+
+    /// Warning/overtime indicator color
+    static let warning = Color(hex: "#FF3B30")
 }

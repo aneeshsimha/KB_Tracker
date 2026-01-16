@@ -71,23 +71,28 @@ struct DurationPicker: View {
     }
 }
 
-#Preview {
+#Preview("EMOM Mode") {
     ZStack {
         AppColors.background.ignoresSafeArea()
-        VStack(spacing: 40) {
-            DurationPicker(
-                mode: .emom,
-                minutes: .constant(20),
-                rounds: .constant(15),
-                restSeconds: .constant(60)
-            )
-            DurationPicker(
-                mode: .rounds,
-                minutes: .constant(20),
-                rounds: .constant(15),
-                restSeconds: .constant(60)
-            )
-        }
+        DurationPicker(
+            mode: .emom,
+            minutes: .constant(20),
+            rounds: .constant(15),
+            restSeconds: .constant(60)
+        )
+        .padding()
+    }
+}
+
+#Preview("Rounds Mode") {
+    ZStack {
+        AppColors.background.ignoresSafeArea()
+        DurationPicker(
+            mode: .rounds,
+            minutes: .constant(20),
+            rounds: .constant(15),
+            restSeconds: .constant(60)
+        )
         .padding()
     }
 }
