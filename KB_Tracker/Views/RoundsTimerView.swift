@@ -33,6 +33,9 @@ struct RoundsTimerView: View {
     @State private var getReadyStartTime: Date? = nil
     @State private var restStartTime: Date? = nil
     @State private var completedSession: WorkoutSession? = nil
+    @State private var partialSession: WorkoutSession? = nil
+    @State private var showExitConfirmation: Bool = false
+    @State private var navigateToSummary: Bool = false
 
     // Timer
     @State private var timer: Timer? = nil
@@ -85,6 +88,22 @@ struct RoundsTimerView: View {
         .onDisappear {
             stopTimer()
         }
+        .alert("Exit Workout?", isPresented: $showExitConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Save Progress", role: .none) {
+                savePartialWorkout()
+            }
+            Button("Discard", role: .destructive) {
+                dismiss()
+            }
+        } message: {
+            Text("Would you like to save your progress or discard this workout?")
+        }
+        .navigationDestination(isPresented: $navigateToSummary) {
+            if let session = completedSession ?? partialSession {
+                SummaryView(session: session)
+            }
+        }
     }
 
     // MARK: - Header
@@ -95,7 +114,7 @@ struct RoundsTimerView: View {
                 .font(AppTypography.body)
                 .foregroundColor(AppColors.textPrimary)
             Spacer()
-            Button(action: exitWorkout) {
+            Button(action: { showExitConfirmation = true }) {
                 Image(systemName: "xmark")
                     .foregroundColor(AppColors.textSecondary)
             }
@@ -186,16 +205,18 @@ struct RoundsTimerView: View {
             }
 
         case .complete:
-            if let session = completedSession {
-                NavigationLink(destination: SummaryView(session: session)) {
-                    Text("VIEW SUMMARY")
-                        .font(AppTypography.button)
-                        .foregroundColor(AppColors.background)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(AppColors.accent)
-                        .cornerRadius(8)
+            Button(action: {
+                if let session = completedSession {
+                    navigateToSummary = true
                 }
+            }) {
+                Text("VIEW SUMMARY")
+                    .font(AppTypography.button)
+                    .foregroundColor(AppColors.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(AppColors.accent)
+                    .cornerRadius(8)
             }
         }
     }
@@ -338,9 +359,24 @@ struct RoundsTimerView: View {
         lastBeepSecond = -1
     }
 
-    private func exitWorkout() {
+    private func savePartialWorkout() {
         stopTimer()
-        dismiss()
+        
+        // Create partial workout session with current progress
+        let session = WorkoutSession(
+            mode: .rounds,
+            kettlebellType: kettlebellType,
+            weight: weight,
+            targetRounds: targetRounds,
+            restDuration: restDuration
+        )
+        session.completedRounds = currentRound
+        session.totalDuration = totalElapsed
+        session.setTimes = setTimes
+        session.isCompleted = false  // Mark as incomplete since user exited early
+
+        partialSession = session
+        navigateToSummary = true
     }
 
     // MARK: - Helpers
