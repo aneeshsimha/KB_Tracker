@@ -13,7 +13,7 @@ struct HomeView: View {
     @State private var kettlebellType: KBType = .double
     @State private var weight: Int = 20
     @State private var targetMinutes: Int = 20       // EMOM
-    @State private var targetRounds: Int = 15        // Rounds mode
+    @State private var targetRounds: Int? = nil      // Rounds mode - no prefilled value
     @State private var restDuration: Int = 60        // Rounds mode
     @State private var showingWorkout: Bool = false
 
@@ -110,15 +110,18 @@ struct HomeView: View {
     // MARK: - Start Button
 
     private var startButton: some View {
-        NavigationLink(destination: destinationView) {
+        let isEnabled = mode == .emom || targetRounds != nil
+        
+        return NavigationLink(destination: destinationView) {
             Text("START")
                 .font(AppTypography.button)
-                .foregroundColor(AppColors.background)
+                .foregroundColor(isEnabled ? AppColors.background : AppColors.textSecondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(AppColors.accent)
+                .background(isEnabled ? AppColors.accent : AppColors.surface)
                 .cornerRadius(8)
         }
+        .disabled(!isEnabled)
     }
 
     @ViewBuilder
@@ -129,11 +132,11 @@ struct HomeView: View {
                 weight: weight,
                 targetMinutes: targetMinutes
             )
-        } else {
+        } else if let rounds = targetRounds {
             RoundsTimerView(
                 kettlebellType: kettlebellType,
                 weight: weight,
-                targetRounds: targetRounds,
+                targetRounds: rounds,
                 restDuration: restDuration
             )
         }
@@ -150,6 +153,7 @@ struct HomeView: View {
         if last.mode == .emom {
             targetMinutes = last.targetRounds
         } else {
+            // Only prefill if there was a previous session, but user can still change it
             targetRounds = last.targetRounds
             restDuration = last.restDuration ?? 60
         }

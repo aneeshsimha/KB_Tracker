@@ -8,7 +8,7 @@ import SwiftUI
 struct DurationPicker: View {
     let mode: WorkoutMode
     @Binding var minutes: Int          // EMOM mode
-    @Binding var rounds: Int           // Rounds mode
+    @Binding var rounds: Int?         // Rounds mode - optional to require selection
     @Binding var restSeconds: Int      // Rounds mode
 
     // Minute options: 10, 12, 15, 18, 20, 22, 25, 30
@@ -45,8 +45,9 @@ struct DurationPicker: View {
                         .foregroundColor(AppColors.textSecondary)
 
                     Picker("Rounds", selection: $rounds) {
+                        Text("Select rounds").tag(nil as Int?)
                         ForEach(roundOptions, id: \.self) { r in
-                            Text("\(r) rounds").tag(r)
+                            Text("\(r) rounds").tag(r as Int?)
                         }
                     }
                     .pickerStyle(.menu)
@@ -77,7 +78,7 @@ struct DurationPicker: View {
         DurationPicker(
             mode: .emom,
             minutes: .constant(20),
-            rounds: .constant(15),
+            rounds: .constant(nil),
             restSeconds: .constant(60)
         )
         .padding()
@@ -90,7 +91,7 @@ struct DurationPicker: View {
         DurationPicker(
             mode: .rounds,
             minutes: .constant(20),
-            rounds: .constant(15),
+            rounds: .constant(nil),
             restSeconds: .constant(60)
         )
         .padding()
