@@ -21,12 +21,12 @@ Follow this sequence to implement the MVP. Each phase builds on the previous one
 
 ## Phase 1: Foundation (Design System) ✅ COMPLETE
 
-### Design/Colors.swift ✅
+### Design/AppColors.swift ✅
 - Implement hex color initializer
 - Define AppColors struct with all color constants
 - Ref: `Design/PLAN.md`
 
-### Design/Typography.swift ✅
+### Design/AppTypography.swift ✅
 - Define font sizes and weights
 - Create AppTypography struct with all text styles
 - Ref: `Design/PLAN.md`
