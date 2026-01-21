@@ -38,11 +38,11 @@ struct HistoryDetailView: View {
                         detailRow(label: "Mode", value: session.mode == .emom ? "EMOM" : "Rounds")
 
                         if let avgTime = session.averageSetTime {
-                            detailRow(label: "Avg Set Time", value: formatTime(avgTime))
+                            detailRow(label: "Avg Set Time", value: avgTime.formattedSetTime)
                         }
 
                         if session.totalDuration > 0 {
-                            detailRow(label: "Total Time", value: formatTime(session.totalDuration))
+                            detailRow(label: "Total Time", value: session.totalDuration.formattedMinutesSeconds)
                         }
 
                         if let rest = session.restDuration, session.mode == .rounds {
@@ -180,7 +180,7 @@ struct HistoryDetailView: View {
                 .font(AppTypography.sectionHeader)
                 .foregroundColor(AppColors.textSecondary)
 
-            Text(formatTime(time))
+            Text(time.formattedSetTime)
                 .font(AppTypography.body)
                 .foregroundColor(isOvertime ? AppColors.warning : AppColors.textPrimary)
 
@@ -189,16 +189,6 @@ struct HistoryDetailView: View {
                     .font(.system(size: 10))
                     .foregroundColor(AppColors.warning)
             }
-        }
-    }
-
-    private func formatTime(_ seconds: TimeInterval) -> String {
-        let mins = Int(seconds) / 60
-        let secs = Int(seconds) % 60
-        if mins > 0 {
-            return String(format: "%d:%02d", mins, secs)
-        } else {
-            return "\(secs)s"
         }
     }
 }
