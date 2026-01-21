@@ -131,16 +131,20 @@ struct HomeView: View {
     private var destinationView: some View {
         if mode == .emom {
             EMOMTimerView(
-                kettlebellType: kettlebellType,
-                weight: weight,
-                targetMinutes: targetMinutes
+                config: .emom(
+                    kettlebellType: kettlebellType,
+                    weight: weight,
+                    minutes: targetMinutes
+                )
             )
         } else {
             RoundsTimerView(
-                kettlebellType: kettlebellType,
-                weight: weight,
-                targetRounds: targetRounds,
-                restDuration: restDuration
+                config: .rounds(
+                    kettlebellType: kettlebellType,
+                    weight: weight,
+                    rounds: targetRounds,
+                    restDuration: restDuration
+                )
             )
         }
     }

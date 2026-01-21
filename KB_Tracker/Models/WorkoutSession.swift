@@ -2,19 +2,10 @@
 // KB_Tracker
 //
 // Core data model for workout sessions
+// Note: WorkoutMode and KBType enums are defined in Enums.swift
 
 import Foundation
 import SwiftData
-
-enum WorkoutMode: String, Codable {
-    case emom      // Every Minute On the Minute
-    case rounds    // Fixed rounds with rest intervals
-}
-
-enum KBType: String, Codable {
-    case single    // Single kettlebell
-    case double    // Double kettlebells (2x)
-}
 
 @Model
 final class WorkoutSession {
