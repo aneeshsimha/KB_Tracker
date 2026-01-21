@@ -14,13 +14,16 @@ struct DurationPicker: View {
     // Minute options: 10, 12, 15, 18, 20, 22, 25, 30
     private let minuteOptions = [10, 12, 15, 18, 20, 22, 25, 30]
 
-    // Round options: 5, 8, 10, 12, 15, 18, 20, 25, 30
-    private let roundOptions = [5, 8, 10, 12, 15, 18, 20, 25, 30]
-
     // Rest options: 30, 45, 60, 90, 120 seconds
     private let restOptions = [30, 45, 60, 90, 120]
-    
-    @State private var showingRoundsPicker = false
+
+    // Custom rounds input state
+    @State private var showCustomRoundsInput: Bool = false
+    @State private var customRoundsText: String = ""
+    @State private var previousRounds: Int = 15
+
+    // Internal selection that handles -1 for custom
+    @State private var pickerSelection: Int = 15
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -46,30 +49,27 @@ struct DurationPicker: View {
                         .font(AppTypography.sectionHeader)
                         .foregroundColor(AppColors.textSecondary)
 
-                    Button(action: {
-                        showingRoundsPicker = true
-                    }) {
-                        HStack {
-                            Text("\(rounds) rounds")
-                                .font(AppTypography.body)
-                                .foregroundColor(AppColors.textPrimary)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(AppColors.textSecondary)
+                    Picker("Rounds", selection: $pickerSelection) {
+                        ForEach(1...60, id: \.self) { r in
+                            Text("\(r) rounds").tag(r)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(AppColors.surface)
-                        .cornerRadius(8)
+                        Text("Custom...").tag(-1)
                     }
-                }
-                .sheet(isPresented: $showingRoundsPicker) {
-                    RoundsPickerSheet(
-                        selectedRounds: $rounds,
-                        options: roundOptions,
-                        isPresented: $showingRoundsPicker
-                    )
+                    .pickerStyle(.menu)
+                    .tint(AppColors.textPrimary)
+                    .onChange(of: pickerSelection) { _, newValue in
+                        if newValue == -1 {
+                            customRoundsText = ""
+                            showCustomRoundsInput = true
+                        } else {
+                            previousRounds = newValue
+                            rounds = newValue
+                        }
+                    }
+                    .onAppear {
+                        pickerSelection = rounds
+                        previousRounds = rounds
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -86,6 +86,28 @@ struct DurationPicker: View {
                     .tint(AppColors.textPrimary)
                 }
             }
+        }
+        .alert("Custom Rounds", isPresented: $showCustomRoundsInput) {
+            TextField("Number of rounds", text: $customRoundsText)
+                .keyboardType(.numberPad)
+            Button("OK") {
+                if let custom = Int(customRoundsText), custom > 0 {
+                    rounds = custom
+                    previousRounds = custom
+                    // If custom value is within picker range, select it
+                    if custom <= 60 {
+                        pickerSelection = custom
+                    }
+                } else {
+                    // Invalid input, restore previous value
+                    pickerSelection = previousRounds
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pickerSelection = previousRounds
+            }
+        } message: {
+            Text("Enter any number of rounds")
         }
     }
 }
@@ -113,82 +135,5 @@ struct DurationPicker: View {
             restSeconds: .constant(60)
         )
         .padding()
-    }
-}
-
-// MARK: - Rounds Picker Sheet
-
-struct RoundsPickerSheet: View {
-    @Binding var selectedRounds: Int
-    let options: [Int]
-    @Binding var isPresented: Bool
-    
-    var body: some View {
-        ZStack {
-            AppColors.background.ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Text("TARGET ROUNDS")
-                        .font(AppTypography.sectionHeader)
-                        .foregroundColor(AppColors.textSecondary)
-                    Spacer()
-                    Button(action: {
-                        isPresented = false
-                    }) {
-                        Image(systemName: "xmark")
-                            .foregroundColor(AppColors.textSecondary)
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                }
-                .padding(20)
-                
-                // List of options
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(options, id: \.self) { option in
-                            Button(action: {
-                                selectedRounds = option
-                                isPresented = false
-                            }) {
-                                HStack {
-                                    Text("\(option) rounds")
-                                        .font(AppTypography.body)
-                                        .foregroundColor(AppColors.textPrimary)
-                                    Spacer()
-                                    if selectedRounds == option {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(AppColors.accent)
-                                            .font(.system(size: 16, weight: .semibold))
-                                    }
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 16)
-                                .background(
-                                    selectedRounds == option
-                                        ? AppColors.surface.opacity(0.5)
-                                        : Color.clear
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            if option != options.last {
-                                Divider()
-                                    .background(AppColors.border)
-                                    .padding(.leading, 20)
-                            }
-                        }
-                    }
-                    .background(AppColors.surface)
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
-                }
-                
-                Spacer()
-            }
-        }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
     }
 }
