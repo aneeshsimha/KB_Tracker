@@ -2,6 +2,7 @@
 // KB_Tracker
 //
 // Core data model for workout sessions
+// Note: WorkoutMode and KBType enums are defined in Enums.swift
 
 import Foundation
 import SwiftData

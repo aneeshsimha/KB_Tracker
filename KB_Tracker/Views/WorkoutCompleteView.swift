@@ -1,7 +1,7 @@
 // WorkoutCompleteView.swift
 // KB_Tracker
 //
-// Post-workout summary and notes
+// Post-workout summary and notes (renamed from SummaryView)
 
 import SwiftUI
 import SwiftData
