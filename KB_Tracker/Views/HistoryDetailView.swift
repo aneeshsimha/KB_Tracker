@@ -42,7 +42,7 @@ struct HistoryDetailView: View {
                         }
 
                         if session.totalDuration > 0 {
-                            detailRow(label: "Total Time", value: session.totalDuration.formattedTime)
+                            detailRow(label: "Total Time", value: session.totalDuration.formattedMinutesSeconds)
                         }
 
                         if let rest = session.restDuration, session.mode == .rounds {

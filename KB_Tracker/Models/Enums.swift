@@ -1,30 +1,34 @@
 // Enums.swift
 // KB_Tracker
 //
-// Consolidated enum definitions for workout tracking
+// Consolidated enum definitions for the app
 
 import Foundation
 
-/// Workout mode - determines timer behavior
+// MARK: - Workout Configuration Enums
+
+/// The workout mode type
 enum WorkoutMode: String, Codable {
     case emom      // Every Minute On the Minute
     case rounds    // Fixed rounds with rest intervals
 }
 
-/// Kettlebell type - single or double
+/// Kettlebell type (single or double)
 enum KBType: String, Codable {
     case single    // Single kettlebell
     case double    // Double kettlebells (2x)
 }
 
-/// Timer phase for EMOM mode
+// MARK: - Timer Phase Enums
+
+/// Phase states for EMOM timer
 enum TimerPhase {
     case getReady   // 5-second countdown before start
-    case active     // Workout in progress
+    case active     // Active workout
     case complete   // Workout finished
 }
 
-/// Timer phase for Rounds mode
+/// Phase states for Rounds timer
 enum RoundsPhase {
     case getReady   // 5-second countdown before start
     case working    // User is doing the set

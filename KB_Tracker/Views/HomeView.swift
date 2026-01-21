@@ -143,7 +143,7 @@ struct HomeView: View {
                     kettlebellType: kettlebellType,
                     weight: weight,
                     rounds: targetRounds,
-                    restDuration: restDuration
+                    restSeconds: restDuration
                 )
             )
         }

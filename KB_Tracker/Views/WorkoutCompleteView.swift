@@ -42,8 +42,8 @@ struct WorkoutCompleteView: View {
                             .font(AppTypography.roundCounter)
                             .foregroundColor(AppColors.textPrimary)
 
-                        statRow(label: "Total Time", value: session.totalDuration.formattedTime)
-                        statRow(label: "Avg Set Time", value: (session.averageSetTime ?? 0).formattedTime)
+                        statRow(label: "Total Time", value: session.totalDuration.formattedMinutesSeconds)
+                        statRow(label: "Avg Set Time", value: (session.averageSetTime ?? 0).formattedMinutesSeconds)
                         statRow(label: "Weight", value: session.weightDisplay)
                     }
 

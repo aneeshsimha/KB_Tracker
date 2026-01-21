@@ -4,25 +4,22 @@
 // Active workout screen for Rounds-with-Rest mode
 
 import SwiftUI
+import SwiftData
 
 struct RoundsTimerView: View {
-    // Configuration passed in from HomeView
     let config: WorkoutConfig
 
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    // ViewModel
     @StateObject private var viewModel: TimerViewModel
 
-    // UI state
-    @State private var completedSession: WorkoutSession? = nil
-    @State private var partialSession: WorkoutSession? = nil
     @State private var showExitConfirmation: Bool = false
     @State private var navigateToSummary: Bool = false
 
     init(config: WorkoutConfig) {
         self.config = config
-        self._viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
+        _viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
     }
 
     var body: some View {
@@ -30,36 +27,30 @@ struct RoundsTimerView: View {
             AppColors.background.ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // Header
                 header
 
                 Spacer()
 
-                // Main display based on phase
                 mainDisplay
 
-                // Round counter
                 if viewModel.roundsPhase != .getReady {
                     Text("ROUND \(viewModel.currentRound)/\(config.targetRounds)")
                         .font(AppTypography.roundCounter)
                         .foregroundColor(AppColors.textPrimary)
                 }
 
-                // Total elapsed time
                 if viewModel.roundsPhase != .getReady && viewModel.roundsPhase != .complete {
-                    Text("Total: \(viewModel.totalElapsed.formattedTimeWithLeadingZero)")
+                    Text("Total: \(viewModel.totalElapsed.formattedMinutesSecondsPadded)")
                         .font(AppTypography.body)
                         .foregroundColor(AppColors.textSecondary)
                 }
 
                 Spacer()
 
-                // Action button
                 actionButton
 
-                // Last set time
                 if let lastTime = viewModel.setTimes.last, viewModel.roundsPhase != .getReady {
-                    Text("Last set: \(lastTime.formattedTimeWithLeadingZero)")
+                    Text("Last set: \(lastTime.formattedMinutesSecondsPadded)")
                         .font(AppTypography.body)
                         .foregroundColor(AppColors.textSecondary)
                 }
@@ -73,15 +64,11 @@ struct RoundsTimerView: View {
         .onDisappear {
             viewModel.stop()
         }
-        .onChange(of: viewModel.roundsPhase) { _, newPhase in
-            if newPhase == .complete {
-                completedSession = viewModel.createSession(isCompleted: true)
-            }
-        }
         .alert("Exit Workout?", isPresented: $showExitConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Save Progress", role: .none) {
-                savePartialWorkout()
+                viewModel.savePartialWorkout()
+                navigateToSummary = true
             }
             Button("Discard", role: .destructive) {
                 dismiss()
@@ -90,9 +77,8 @@ struct RoundsTimerView: View {
             Text("Would you like to save your progress or discard this workout?")
         }
         .navigationDestination(isPresented: $navigateToSummary) {
-            if let session = completedSession ?? partialSession {
+            if let session = viewModel.session {
                 WorkoutCompleteView(session: session) {
-                    // Exit the entire workout flow back to HomeView
                     dismiss()
                 }
             }
@@ -103,7 +89,7 @@ struct RoundsTimerView: View {
 
     private var header: some View {
         HStack {
-            Text(config.weightDisplay)
+            Text(viewModel.weightDisplay)
                 .font(AppTypography.body)
                 .foregroundColor(AppColors.textPrimary)
             Spacer()
@@ -135,7 +121,7 @@ struct RoundsTimerView: View {
                 Text("WORKING")
                     .font(AppTypography.title)
                     .foregroundColor(AppColors.accent)
-                Text(viewModel.currentSetElapsed.formattedTimeWithLeadingZero)
+                Text(viewModel.currentSetElapsed.formattedMinutesSecondsPadded)
                     .font(AppTypography.timer)
                     .foregroundColor(AppColors.textPrimary)
                     .monospacedDigit()
@@ -199,9 +185,7 @@ struct RoundsTimerView: View {
 
         case .complete:
             Button(action: {
-                if completedSession != nil {
-                    navigateToSummary = true
-                }
+                navigateToSummary = true
             }) {
                 Text("VIEW SUMMARY")
                     .font(AppTypography.button)
@@ -213,16 +197,8 @@ struct RoundsTimerView: View {
             }
         }
     }
-
-    // MARK: - Actions
-
-    private func savePartialWorkout() {
-        viewModel.stop()
-        partialSession = viewModel.createSession(isCompleted: false)
-        navigateToSummary = true
-    }
 }
 
 #Preview {
-    RoundsTimerView(config: .rounds(kettlebellType: .double, weight: 20, rounds: 5, restDuration: 30))
+    RoundsTimerView(config: .rounds(kettlebellType: .double, weight: 20, rounds: 5, restSeconds: 30))
 }

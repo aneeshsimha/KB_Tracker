@@ -7,25 +7,19 @@ import SwiftUI
 import SwiftData
 
 struct EMOMTimerView: View {
-    // Configuration passed in from HomeView
     let config: WorkoutConfig
 
-    // Environment
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    // ViewModel
     @StateObject private var viewModel: TimerViewModel
 
-    // UI state
     @State private var showExitConfirmation: Bool = false
     @State private var navigateToSummary: Bool = false
-    @State private var completedSession: WorkoutSession? = nil
-    @State private var partialSession: WorkoutSession? = nil
 
     init(config: WorkoutConfig) {
         self.config = config
-        self._viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
+        _viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
     }
 
     var body: some View {
@@ -33,24 +27,20 @@ struct EMOMTimerView: View {
             AppColors.background.ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // Header
                 header
 
                 Spacer()
 
-                // Main timer display
                 timerContent
 
                 Spacer()
 
-                // SET DONE button (only during active phase)
                 if viewModel.emomPhase == .active {
                     setDoneButton
                 }
 
-                // Last set time
                 if let lastTime = viewModel.setTimes.last {
-                    Text("Last set: \(lastTime.formattedTime)")
+                    Text("Last set: \(lastTime.formattedMinutesSeconds)")
                         .font(AppTypography.body)
                         .foregroundColor(AppColors.textSecondary)
                 }
@@ -66,8 +56,6 @@ struct EMOMTimerView: View {
         }
         .onChange(of: viewModel.emomPhase) { _, newPhase in
             if newPhase == .complete {
-                completedSession = viewModel.createSession(isCompleted: true)
-                // Navigate to summary after a brief delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     navigateToSummary = true
                 }
@@ -76,7 +64,8 @@ struct EMOMTimerView: View {
         .alert("Exit Workout?", isPresented: $showExitConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Save Progress", role: .none) {
-                savePartialWorkout()
+                viewModel.savePartialWorkout()
+                navigateToSummary = true
             }
             Button("Discard", role: .destructive) {
                 dismiss()
@@ -85,9 +74,8 @@ struct EMOMTimerView: View {
             Text("Would you like to save your progress or discard this workout?")
         }
         .navigationDestination(isPresented: $navigateToSummary) {
-            if let session = completedSession ?? partialSession {
+            if let session = viewModel.session {
                 WorkoutCompleteView(session: session) {
-                    // Exit the entire workout flow back to HomeView
                     dismiss()
                 }
             }
@@ -98,7 +86,7 @@ struct EMOMTimerView: View {
 
     private var header: some View {
         HStack {
-            Text(config.weightDisplay)
+            Text(viewModel.weightDisplay)
                 .font(AppTypography.body)
                 .foregroundColor(AppColors.textPrimary)
             Spacer()
@@ -125,15 +113,13 @@ struct EMOMTimerView: View {
 
         case .active:
             VStack(spacing: 16) {
-                // Countdown display
                 TimerDisplay(
-                    seconds: viewModel.emomCountdownSeconds,
-                    isOvertime: viewModel.isEMOMOvertime,
+                    seconds: viewModel.countdownSeconds,
+                    isOvertime: viewModel.isOvertime,
                     label: "ROUND \(viewModel.currentRound)/\(config.targetRounds)"
                 )
 
-                // Total elapsed time
-                Text("Total: \(viewModel.totalElapsed.formattedTime)")
+                Text("Total: \(viewModel.totalElapsed.formattedMinutesSeconds)")
                     .font(AppTypography.body)
                     .foregroundColor(AppColors.textSecondary)
             }
@@ -163,14 +149,6 @@ struct EMOMTimerView: View {
                 .cornerRadius(8)
         }
         .disabled(!viewModel.isSetInProgress)
-    }
-
-    // MARK: - Actions
-
-    private func savePartialWorkout() {
-        viewModel.stop()
-        partialSession = viewModel.createSession(isCompleted: false)
-        navigateToSummary = true
     }
 }
 
