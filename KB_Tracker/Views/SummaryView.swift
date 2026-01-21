@@ -159,7 +159,7 @@ struct SummaryView: View {
 
         // Dismiss this view first
         dismiss()
-
+        
         // Then dismiss the timer view to exit the entire workout flow
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             onSaveComplete?()
