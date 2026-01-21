@@ -5,67 +5,42 @@
 
 import SwiftUI
 import SwiftData
-import Combine
-
-enum TimerPhase {
-    case getReady
-    case active
-    case complete
-}
 
 struct EMOMTimerView: View {
-    // Passed in from HomeView
-    let kettlebellType: KBType
-    let weight: Int
-    let targetMinutes: Int
+    let config: WorkoutConfig
 
-    // Environment
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    // Timer state
-    @State private var currentRound: Int = 0
-    @State private var secondsIntoMinute: Double = 0
-    @State private var totalElapsed: TimeInterval = 0
-    @State private var setTimes: [TimeInterval] = []
-    @State private var setStartTime: Date? = nil
-    @State private var phase: TimerPhase = .getReady
-    @State private var isSetInProgress: Bool = false
-    @State private var getReadyCountdown: Int = 5
-    @State private var lastBeepSecond: Int = -1
+    @StateObject private var viewModel: TimerViewModel
 
-    // UI state
     @State private var showExitConfirmation: Bool = false
     @State private var navigateToSummary: Bool = false
-    @State private var completedSession: WorkoutSession? = nil
-    @State private var partialSession: WorkoutSession? = nil
 
-    // Timer publisher
-    let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    init(config: WorkoutConfig) {
+        self.config = config
+        _viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
+    }
 
     var body: some View {
         ZStack {
             AppColors.background.ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // Header
                 header
 
                 Spacer()
 
-                // Main timer display
                 timerContent
 
                 Spacer()
 
-                // SET DONE button (only during active phase)
-                if phase == .active {
+                if viewModel.emomPhase == .active {
                     setDoneButton
                 }
 
-                // Last set time
-                if let lastTime = setTimes.last {
-                    Text("Last set: \(formatTime(lastTime))")
+                if let lastTime = viewModel.setTimes.last {
+                    Text("Last set: \(lastTime.formattedMinutesSeconds)")
                         .font(AppTypography.body)
                         .foregroundColor(AppColors.textSecondary)
                 }
@@ -73,13 +48,24 @@ struct EMOMTimerView: View {
             .padding(24)
         }
         .navigationBarHidden(true)
-        .onReceive(timer) { _ in
-            handleTimerTick()
+        .onAppear {
+            viewModel.start()
+        }
+        .onDisappear {
+            viewModel.stop()
+        }
+        .onChange(of: viewModel.emomPhase) { _, newPhase in
+            if newPhase == .complete {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    navigateToSummary = true
+                }
+            }
         }
         .alert("Exit Workout?", isPresented: $showExitConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Save Progress", role: .none) {
-                savePartialWorkout()
+                viewModel.savePartialWorkout()
+                navigateToSummary = true
             }
             Button("Discard", role: .destructive) {
                 dismiss()
@@ -88,9 +74,8 @@ struct EMOMTimerView: View {
             Text("Would you like to save your progress or discard this workout?")
         }
         .navigationDestination(isPresented: $navigateToSummary) {
-            if let session = completedSession ?? partialSession {
-                SummaryView(session: session) {
-                    // Exit the entire workout flow back to HomeView
+            if let session = viewModel.session {
+                WorkoutCompleteView(session: session) {
                     dismiss()
                 }
             }
@@ -101,7 +86,7 @@ struct EMOMTimerView: View {
 
     private var header: some View {
         HStack {
-            Text(weightDisplay)
+            Text(viewModel.weightDisplay)
                 .font(AppTypography.body)
                 .foregroundColor(AppColors.textPrimary)
             Spacer()
@@ -117,26 +102,24 @@ struct EMOMTimerView: View {
 
     @ViewBuilder
     private var timerContent: some View {
-        switch phase {
+        switch viewModel.emomPhase {
         case .getReady:
             VStack(spacing: 16) {
                 Text("GET READY")
                     .font(AppTypography.roundCounter)
                     .foregroundColor(AppColors.textSecondary)
-                TimerDisplay(seconds: getReadyCountdown, label: nil)
+                TimerDisplay(seconds: viewModel.getReadyCountdown, label: nil)
             }
 
         case .active:
             VStack(spacing: 16) {
-                // Countdown display
                 TimerDisplay(
-                    seconds: countdownSeconds,
-                    isOvertime: isOvertime,
-                    label: "ROUND \(currentRound)/\(targetMinutes)"
+                    seconds: viewModel.countdownSeconds,
+                    isOvertime: viewModel.isOvertime,
+                    label: "ROUND \(viewModel.currentRound)/\(config.targetRounds)"
                 )
 
-                // Total elapsed time
-                Text("Total: \(formatTime(totalElapsed))")
+                Text("Total: \(viewModel.totalElapsed.formattedMinutesSeconds)")
                     .font(AppTypography.body)
                     .foregroundColor(AppColors.textSecondary)
             }
@@ -146,7 +129,7 @@ struct EMOMTimerView: View {
                 Text("COMPLETE!")
                     .font(AppTypography.title)
                     .foregroundColor(AppColors.textPrimary)
-                Text("\(currentRound) rounds")
+                Text("\(viewModel.currentRound) rounds")
                     .font(AppTypography.roundCounter)
                     .foregroundColor(AppColors.textSecondary)
             }
@@ -156,182 +139,22 @@ struct EMOMTimerView: View {
     // MARK: - SET DONE Button
 
     private var setDoneButton: some View {
-        Button(action: handleSetDone) {
-            Text(isSetInProgress ? "SET DONE" : "WAITING...")
+        Button(action: { viewModel.handleEMOMSetDone() }) {
+            Text(viewModel.isSetInProgress ? "SET DONE" : "WAITING...")
                 .font(AppTypography.button)
-                .foregroundColor(isSetInProgress ? AppColors.background : AppColors.textSecondary)
+                .foregroundColor(viewModel.isSetInProgress ? AppColors.background : AppColors.textSecondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-                .background(isSetInProgress ? AppColors.accent : AppColors.surface)
+                .background(viewModel.isSetInProgress ? AppColors.accent : AppColors.surface)
                 .cornerRadius(8)
         }
-        .disabled(!isSetInProgress)
-    }
-
-    // MARK: - Timer Logic
-
-    private func handleTimerTick() {
-        switch phase {
-        case .getReady:
-            handleGetReadyPhase()
-        case .active:
-            handleActivePhase()
-        case .complete:
-            break
-        }
-    }
-
-    private func handleGetReadyPhase() {
-        getReadyCountdown = 5 - Int(totalElapsed)
-
-        // Play countdown beeps
-        let currentSecond = Int(totalElapsed)
-        if currentSecond != lastBeepSecond && currentSecond < 5 {
-            AudioManager.shared.playCountdownBeep()
-            lastBeepSecond = currentSecond
-        }
-
-        totalElapsed += 0.1
-
-        if totalElapsed >= 5 {
-            // Transition to active phase
-            phase = .active
-            totalElapsed = 0
-            secondsIntoMinute = 0
-            startNewRound()
-            AudioManager.shared.playGoBeep()
-        }
-    }
-
-    private func handleActivePhase() {
-        totalElapsed += 0.1
-        secondsIntoMinute += 0.1
-
-        // Check for countdown beeps at :55-59
-        let secondsRemaining = 60 - Int(secondsIntoMinute)
-        if secondsRemaining <= 5 && secondsRemaining > 0 {
-            let beepSecond = 60 - secondsRemaining
-            if beepSecond != lastBeepSecond {
-                AudioManager.shared.playCountdownBeep()
-                lastBeepSecond = beepSecond
-            }
-        }
-
-        // Check for minute boundary (only if set is done)
-        if secondsIntoMinute >= 60 && !isSetInProgress {
-            // Move to next minute
-            secondsIntoMinute = 0
-            lastBeepSecond = -1
-
-            if currentRound < targetMinutes {
-                startNewRound()
-                AudioManager.shared.playGoBeep()
-            } else {
-                // Workout complete
-                completeWorkout()
-            }
-        }
-    }
-
-    private func startNewRound() {
-        currentRound += 1
-        isSetInProgress = true
-        setStartTime = Date()
-    }
-
-    private func handleSetDone() {
-        guard isSetInProgress, let startTime = setStartTime else { return }
-
-        // Calculate set duration
-        let setDuration = Date().timeIntervalSince(startTime)
-        setTimes.append(setDuration)
-
-        isSetInProgress = false
-        setStartTime = nil
-
-        // Check if this was the last round
-        if currentRound >= targetMinutes {
-            completeWorkout()
-        }
-    }
-
-    private func completeWorkout() {
-        phase = .complete
-        AudioManager.shared.playCompletionSound()
-
-        // Create workout session
-        let session = WorkoutSession(
-            mode: .emom,
-            kettlebellType: kettlebellType,
-            weight: weight,
-            targetRounds: targetMinutes,
-            restDuration: nil
-        )
-        session.completedRounds = currentRound
-        session.totalDuration = totalElapsed
-        session.setTimes = setTimes
-        session.isCompleted = true
-
-        completedSession = session
-
-        // Navigate to summary after a brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            navigateToSummary = true
-        }
-    }
-
-    private func savePartialWorkout() {
-        // Create partial workout session with current progress
-        let session = WorkoutSession(
-            mode: .emom,
-            kettlebellType: kettlebellType,
-            weight: weight,
-            targetRounds: targetMinutes,
-            restDuration: nil
-        )
-        session.completedRounds = currentRound
-        session.totalDuration = totalElapsed
-        session.setTimes = setTimes
-        session.isCompleted = false  // Mark as incomplete since user exited early
-
-        partialSession = session
-        navigateToSummary = true
-    }
-
-    // MARK: - Computed Properties
-
-    private var weightDisplay: String {
-        switch kettlebellType {
-        case .single:
-            return "\(weight)kg"
-        case .double:
-            return "2×\(weight)kg"
-        }
-    }
-
-    private var countdownSeconds: Int {
-        if isOvertime {
-            // Show negative time when overtime
-            return Int(secondsIntoMinute) - 60
-        } else {
-            return 60 - Int(secondsIntoMinute)
-        }
-    }
-
-    private var isOvertime: Bool {
-        secondsIntoMinute > 60 && isSetInProgress
-    }
-
-    private func formatTime(_ seconds: TimeInterval) -> String {
-        let mins = Int(seconds) / 60
-        let secs = Int(seconds) % 60
-        return String(format: "%d:%02d", mins, secs)
+        .disabled(!viewModel.isSetInProgress)
     }
 }
 
 #Preview {
     NavigationStack {
-        EMOMTimerView(kettlebellType: .double, weight: 20, targetMinutes: 3)
+        EMOMTimerView(config: .emom(kettlebellType: .double, weight: 20, minutes: 3))
     }
     .modelContainer(for: WorkoutSession.self, inMemory: true)
 }

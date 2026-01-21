@@ -1,4 +1,4 @@
-// Colors.swift
+// AppColors.swift
 // KB_Tracker
 //
 // Design system color definitions

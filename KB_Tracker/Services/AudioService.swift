@@ -1,4 +1,4 @@
-// AudioManager.swift
+// AudioService.swift
 // KB_Tracker
 //
 // Sound playback for timer beeps and cues
@@ -6,8 +6,8 @@
 import AVFoundation
 import AudioToolbox
 
-class AudioManager {
-    static let shared = AudioManager()
+class AudioService {
+    static let shared = AudioService()
 
     private init() {
         configureAudioSession()

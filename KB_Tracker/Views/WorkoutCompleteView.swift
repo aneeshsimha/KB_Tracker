@@ -1,4 +1,4 @@
-// SummaryView.swift
+// WorkoutCompleteView.swift
 // KB_Tracker
 //
 // Post-workout summary and notes
@@ -6,7 +6,7 @@
 import SwiftUI
 import SwiftData
 
-struct SummaryView: View {
+struct WorkoutCompleteView: View {
     let session: WorkoutSession
     var onSaveComplete: (() -> Void)? = nil
 
@@ -42,8 +42,8 @@ struct SummaryView: View {
                             .font(AppTypography.roundCounter)
                             .foregroundColor(AppColors.textPrimary)
 
-                        statRow(label: "Total Time", value: formatTime(session.totalDuration))
-                        statRow(label: "Avg Set Time", value: formatTime(session.averageSetTime ?? 0))
+                        statRow(label: "Total Time", value: session.totalDuration.formattedMinutesSeconds)
+                        statRow(label: "Avg Set Time", value: (session.averageSetTime ?? 0).formattedMinutesSeconds)
                         statRow(label: "Weight", value: session.weightDisplay)
                     }
 
@@ -136,7 +136,7 @@ struct SummaryView: View {
                     Text("R\(index + 1):")
                         .font(AppTypography.sectionHeader)
                         .foregroundColor(AppColors.textSecondary)
-                    Text(formatSetTime(time))
+                    Text(time.formattedSetTime)
                         .font(AppTypography.body)
                         .foregroundColor(time > 60 ? AppColors.warning : AppColors.textPrimary)
                     if time > 60 {
@@ -165,24 +165,6 @@ struct SummaryView: View {
             onSaveComplete?()
         }
     }
-
-    // MARK: - Helpers
-
-    private func formatTime(_ seconds: TimeInterval) -> String {
-        let mins = Int(seconds) / 60
-        let secs = Int(seconds) % 60
-        return String(format: "%d:%02d", mins, secs)
-    }
-
-    private func formatSetTime(_ seconds: TimeInterval) -> String {
-        if seconds >= 60 {
-            let mins = Int(seconds) / 60
-            let secs = Int(seconds) % 60
-            return String(format: "%d:%02d", mins, secs)
-        } else {
-            return "\(Int(seconds))s"
-        }
-    }
 }
 
 #Preview {
@@ -198,7 +180,7 @@ struct SummaryView: View {
     session.setTimes = [42, 45, 48, 51, 44, 47, 62, 55, 43, 46, 49, 52, 44, 47, 50, 53, 45, 48]
 
     return NavigationStack {
-        SummaryView(session: session)
+        WorkoutCompleteView(session: session)
     }
     .modelContainer(for: WorkoutSession.self, inMemory: true)
 }
