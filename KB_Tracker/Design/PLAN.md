@@ -6,25 +6,25 @@ Contains design system definitions - colors, typography, and constants.
 ## Current State
 | File | Description |
 |------|-------------|
-| `Colors.swift` | AppColors struct with color definitions |
-| `Typography.swift` | AppTypography struct with font definitions |
+| `AppColors.swift` | AppColors struct with color definitions |
+| `AppTypography.swift` | AppTypography struct with font definitions |
 
 ## Target Files
 | File | Status | Description |
 |------|--------|-------------|
-| `AppColors.swift` | Rename | Color definitions (rename from Colors.swift) |
-| `AppTypography.swift` | Rename | Font definitions (rename from Typography.swift) |
+| `AppColors.swift` | ✅ Complete | Color definitions |
+| `AppTypography.swift` | ✅ Complete | Font definitions |
 | `AppConstants.swift` | Create | Timing values, weight ranges, defaults |
 
 ## Tasks
 
-### 1. Rename Colors.swift → AppColors.swift
-- [ ] Rename file
-- [ ] No code changes needed (struct already named AppColors)
+### 1. Rename Colors.swift → AppColors.swift ✅
+- [x] Rename file
+- [x] No code changes needed (struct already named AppColors)
 
-### 2. Rename Typography.swift → AppTypography.swift
-- [ ] Rename file
-- [ ] No code changes needed (struct already named AppTypography)
+### 2. Rename Typography.swift → AppTypography.swift ✅
+- [x] Rename file
+- [x] No code changes needed (struct already named AppTypography)
 
 ### 3. Create AppConstants.swift
 - [ ] Extract magic numbers from views

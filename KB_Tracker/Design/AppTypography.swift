@@ -1,4 +1,4 @@
-// Typography.swift
+// AppTypography.swift
 // KB_Tracker
 //
 // Design system typography definitions
