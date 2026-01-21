@@ -1,89 +1,98 @@
-# Design Directory
+# Design/ Folder Plan
 
-This directory contains the app's design system - colors, typography, and shared visual constants.
+## Purpose
+Contains design system definitions - colors, typography, and constants.
 
----
+## Current State
+| File | Description |
+|------|-------------|
+| `Colors.swift` | AppColors struct with color definitions |
+| `Typography.swift` | AppTypography struct with font definitions |
 
-## Files
+## Target Files
+| File | Status | Description |
+|------|--------|-------------|
+| `AppColors.swift` | Rename | Color definitions (rename from Colors.swift) |
+| `AppTypography.swift` | Rename | Font definitions (rename from Typography.swift) |
+| `AppConstants.swift` | Create | Timing values, weight ranges, defaults |
 
-### Colors.swift
+## Tasks
 
-**Purpose:** Central color definitions for the dark/tactical theme
+### 1. Rename Colors.swift → AppColors.swift
+- [ ] Rename file
+- [ ] No code changes needed (struct already named AppColors)
 
-**Implementation:**
+### 2. Rename Typography.swift → AppTypography.swift
+- [ ] Rename file
+- [ ] No code changes needed (struct already named AppTypography)
 
+### 3. Create AppConstants.swift
+- [ ] Extract magic numbers from views
+- [ ] Timer constants (countdown duration, tick interval)
+- [ ] Weight range constants
+- [ ] Round/minute options
+
+## Implementation Notes
+
+### AppConstants.swift
 ```swift
-import SwiftUI
+// AppConstants.swift
 
-extension Color {
-    // Add hex initializer
-    init(hex: String) {
-        // Parse hex string to RGB values
+import Foundation
+
+struct AppConstants {
+    // MARK: - Timer
+
+    struct Timer {
+        static let getReadyDuration: Int = 5
+        static let tickInterval: TimeInterval = 0.1
+        static let emomMinuteDuration: TimeInterval = 60
+        static let countdownWarningStart: Int = 5
+    }
+
+    // MARK: - Weight
+
+    struct Weight {
+        static let minimum: Int = 12
+        static let maximum: Int = 24
+        static let step: Int = 2
+        static let options: [Int] = Array(stride(from: minimum, through: maximum, by: step))
+        static let defaultWeight: Int = 20
+    }
+
+    // MARK: - Rounds
+
+    struct Rounds {
+        static let options: [Int] = [5, 8, 10, 12, 15, 18, 20, 25, 30]
+        static let defaultTarget: Int = 15
+    }
+
+    // MARK: - EMOM
+
+    struct EMOM {
+        static let minuteOptions: [Int] = [10, 12, 15, 18, 20, 22, 25, 30]
+        static let defaultMinutes: Int = 20
+    }
+
+    // MARK: - Rest
+
+    struct Rest {
+        static let options: [Int] = [30, 45, 60, 90, 120]
+        static let defaultSeconds: Int = 60
+    }
+
+    // MARK: - Animation
+
+    struct Animation {
+        static let defaultDuration: TimeInterval = 0.3
+        static let quickDuration: TimeInterval = 0.15
     }
 }
-
-struct AppColors {
-    static let background = Color(hex: "#050505")      // Near-black
-    static let surface = Color(hex: "#111111")         // Cards, elevated surfaces
-    static let border = Color(hex: "#222222")          // Subtle borders
-    static let textPrimary = Color.white               // Main text
-    static let textSecondary = Color(hex: "#666666")   // Secondary/muted text
-    static let accent = Color.white                    // Buttons, highlights
-    static let warning = Color(hex: "#FF3B30")         // Overtime indicator
-}
 ```
-
-**Notes:**
-- The hex initializer is essential - SwiftUI doesn't have built-in hex support
-- Consider adding `opacity` variants for common use cases
-- All colors should be static to avoid re-computation
-
----
-
-### Typography.swift
-
-**Purpose:** Font definitions and text styles
-
-**Implementation:**
-
-```swift
-import SwiftUI
-
-struct AppTypography {
-    // Timer display - large, monospace for alignment
-    static let timer = Font.system(size: 72, weight: .bold, design: .monospaced)
-
-    // Round counter
-    static let roundCounter = Font.system(size: 24, weight: .semibold)
-
-    // Section headers (WEIGHT, DURATION, etc.)
-    static let sectionHeader = Font.system(size: 12, weight: .medium)
-
-    // Body text
-    static let body = Font.system(size: 16, weight: .regular)
-
-    // Button labels
-    static let button = Font.system(size: 18, weight: .semibold)
-
-    // App title
-    static let title = Font.system(size: 28, weight: .bold, design: .default)
-}
-```
-
-**Notes:**
-- Use `.monospacedDigit()` modifier on timer fonts to prevent layout shifts as numbers change
-- Consider tracking (letter-spacing) adjustments for headers
-- System fonts (SF Pro) are used - no custom fonts needed
-
----
 
 ## Dependencies
+- None (this is the design system foundation)
 
-- None (this is a foundational module)
-
----
-
-## Used By
-
-- All Views and Components will import these definitions
-- Should be imported via `import SwiftUI` (Colors/Typography are extensions)
+## Testing
+- All views should compile after renames
+- Constants should be accessible throughout the app

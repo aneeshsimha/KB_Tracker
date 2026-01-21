@@ -1,20 +1,43 @@
-# Models Directory
+# Models/ Folder Plan
 
-This directory contains SwiftData models for persistent storage.
+## Purpose
+Contains data models, enums, and configuration structs for the app.
 
----
+## Current State
+- `WorkoutSession.swift` - SwiftData model with enums embedded inline
 
-## Files
+## Target Files
+| File | Status | Description |
+|------|--------|-------------|
+| `WorkoutSession.swift` | Refactor | SwiftData model for history (remove embedded enums) |
+| `Enums.swift` | Create | All shared enums: KBType, WorkoutMode, TimerPhase, RoundsPhase |
+| `WorkoutConfig.swift` | Create | Settings struct passed Home → Timer → Complete |
 
-### WorkoutSession.swift
+## Tasks
 
-**Purpose:** The core data model representing a completed (or in-progress) workout
+### 1. Create Enums.swift
+- [ ] Extract `WorkoutMode` from WorkoutSession.swift
+- [ ] Extract `KBType` from WorkoutSession.swift
+- [ ] Move `TimerPhase` from EMOMTimerView.swift
+- [ ] Move `RoundsPhase` from RoundsTimerView.swift
+- [ ] Move `SystemSound` from AudioManager.swift
 
-**Implementation:**
+### 2. Refactor WorkoutSession.swift
+- [ ] Remove `WorkoutMode` enum definition (import from Enums.swift)
+- [ ] Remove `KBType` enum definition (import from Enums.swift)
+- [ ] Keep SwiftData @Model class
 
+### 3. Create WorkoutConfig.swift
+- [ ] Create a lightweight struct for passing workout settings
+- [ ] Not persisted - just used to pass config between views
+
+## Implementation Notes
+
+### Enums.swift
 ```swift
+// Enums.swift
+
 import Foundation
-import SwiftData
 
 enum WorkoutMode: String, Codable {
     case emom      // Every Minute On the Minute
@@ -26,129 +49,46 @@ enum KBType: String, Codable {
     case double    // Double kettlebells (2x)
 }
 
-@Model
-final class WorkoutSession {
-    var id: UUID = UUID()
-    var date: Date = Date()
-    var mode: WorkoutMode = .emom
-    var kettlebellType: KBType = .double
-    var weight: Int = 20                        // Weight in kg (12-24)
-    var targetRounds: Int = 20                  // EMOM: minutes, Rounds: target count
-    var completedRounds: Int = 0
-    var totalDuration: TimeInterval = 0         // Total workout time in seconds
-    var restDuration: Int? = nil                // Rest between sets (rounds mode only)
-    var setTimes: [TimeInterval] = []           // Completion time for each set
-    var notes: String? = nil                    // User notes (failure, improvements)
-    var isCompleted: Bool = false               // Was workout finished normally?
+enum TimerPhase {
+    case getReady
+    case active
+    case complete
+}
 
-    init() {}
-
-    // Convenience initializer for starting a new workout
-    init(mode: WorkoutMode, kettlebellType: KBType, weight: Int, targetRounds: Int, restDuration: Int? = nil) {
-        self.id = UUID()
-        self.date = Date()
-        self.mode = mode
-        self.kettlebellType = kettlebellType
-        self.weight = weight
-        self.targetRounds = targetRounds
-        self.restDuration = restDuration
-        self.completedRounds = 0
-        self.totalDuration = 0
-        self.setTimes = []
-        self.notes = nil
-        self.isCompleted = false
-    }
+enum RoundsPhase {
+    case getReady    // 5-second countdown before start
+    case working     // User is doing the set
+    case resting     // Rest countdown between sets
+    case complete    // Workout finished
 }
 ```
 
-**Computed Properties to Add:**
-
+### WorkoutConfig.swift
 ```swift
-extension WorkoutSession {
-    // Display string for weight (e.g., "2×20kg" or "20kg")
+// WorkoutConfig.swift
+
+import Foundation
+
+struct WorkoutConfig {
+    let mode: WorkoutMode
+    let kettlebellType: KBType
+    let weight: Int
+    let targetRounds: Int
+    let restDuration: Int?
+
     var weightDisplay: String {
         switch kettlebellType {
-        case .single:
-            return "\(weight)kg"
-        case .double:
-            return "2×\(weight)kg"
+        case .single: return "\(weight)kg"
+        case .double: return "2×\(weight)kg"
         }
-    }
-
-    // Average set completion time
-    var averageSetTime: TimeInterval? {
-        guard !setTimes.isEmpty else { return nil }
-        return setTimes.reduce(0, +) / Double(setTimes.count)
-    }
-
-    // Did any set go overtime (>60 seconds for EMOM)?
-    var hasOvertimeSets: Bool {
-        guard mode == .emom else { return false }
-        return setTimes.contains { $0 > 60 }
-    }
-
-    // Rounds display string (e.g., "18/20")
-    var roundsDisplay: String {
-        "\(completedRounds)/\(targetRounds)"
     }
 }
 ```
-
----
-
-## Weight Options
-
-For the picker UI, these are the valid weight options:
-
-```swift
-// Single KB: 12, 14, 16, 18, 20, 22, 24 kg
-let singleWeights = stride(from: 12, through: 24, by: 2).map { $0 }
-
-// Double KB: Same weights (displayed as 2×12, 2×14, etc.)
-let doubleWeights = stride(from: 12, through: 24, by: 2).map { $0 }
-```
-
----
-
-## SwiftData Setup
-
-In `KB_TrackerApp.swift`, update the ModelContainer:
-
-```swift
-@main
-struct KB_TrackerApp: App {
-    var body: some Scene {
-        WindowGroup {
-            HomeView()
-        }
-        .modelContainer(for: WorkoutSession.self)
-    }
-}
-```
-
----
 
 ## Dependencies
+- None (base layer)
 
-- SwiftData (Apple framework)
-- Foundation
-
----
-
-## Used By
-
-- `HomeView` - Queries last workout for pre-filling
-- `EMOMTimerView` - Creates/updates session during workout
-- `RoundsTimerView` - Same
-- `SummaryView` - Displays completed session stats
-- `HistoryView` - Lists all sessions
-- `HistoryDetailView` - Shows single session details
-
----
-
-## Notes
-
-- The `@Model` macro handles Codable conformance automatically
-- `setTimes` array stores completion time for each round (index 0 = round 1)
-- `restDuration` is only populated for rounds mode
-- Delete the existing `Item.swift` file after implementing this
+## Testing
+- Build should succeed with separated enums
+- All views importing enums should compile
+- WorkoutSession should still persist correctly

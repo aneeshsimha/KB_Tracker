@@ -1,291 +1,130 @@
-# Components Directory
+# Components/ Folder Plan
 
-This directory contains reusable UI components used across multiple views.
+## Purpose
+Contains reusable UI components used across multiple views.
 
----
+## Current State
+| File | Description |
+|------|-------------|
+| `WeightPicker.swift` | Weight selection (Single/Double + kg) |
+| `DurationPicker.swift` | Duration/rounds selection (includes RoundsPickerSheet) |
+| `TimerDisplay.swift` | Large countdown timer display |
 
-## Files
+## Target Files
+| File | Status | Description |
+|------|--------|-------------|
+| `WeightPicker.swift` | Keep | No changes needed |
+| `DurationPicker.swift` | Keep | No changes needed |
+| `TimerDisplay.swift` | Keep | No changes needed |
+| `RoundProgressBar.swift` | Create | Visual progress indicator |
+| `SessionCard.swift` | Create | History list item component |
 
-### WeightPicker.swift
+## Tasks
 
-**Purpose:** Combined picker for kettlebell type (Single/Double) and weight (12-24kg)
+### 1. Create RoundProgressBar.swift
+- [ ] Visual ring/bar showing completed vs target rounds
+- [ ] Used in timer views to show progress
+- [ ] Animated fill as rounds complete
 
-**Interface:**
+### 2. Create SessionCard.swift
+- [ ] Extract session row from HistoryView
+- [ ] Reusable card showing: date, weight, rounds, mode
+- [ ] Tap to navigate to detail
+
+### 3. Optional: Extract RoundsPickerSheet
+- [ ] Move RoundsPickerSheet from DurationPicker.swift to its own file
+- [ ] More modular, easier to maintain
+
+## Implementation Notes
+
+### RoundProgressBar.swift
 ```swift
-struct WeightPicker: View {
-    @Binding var kettlebellType: KBType
-    @Binding var weight: Int
+// RoundProgressBar.swift
 
-    var body: some View { ... }
-}
-```
+import SwiftUI
 
-**Layout:**
-```
-WEIGHT
-[Single ▼] [20 kg ▼]
-    │           │
-    └── Picker  └── Picker
-```
+struct RoundProgressBar: View {
+    let completed: Int
+    let total: Int
+    var accentColor: Color = AppColors.accent
 
-**Implementation Notes:**
-
-```swift
-struct WeightPicker: View {
-    @Binding var kettlebellType: KBType
-    @Binding var weight: Int
-
-    // Weight options: 12, 14, 16, 18, 20, 22, 24
-    private let weights = Array(stride(from: 12, through: 24, by: 2))
+    private var progress: Double {
+        guard total > 0 else { return 0 }
+        return Double(completed) / Double(total)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("WEIGHT")
-                .font(AppTypography.sectionHeader)
-                .foregroundColor(AppColors.textSecondary)
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Background
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(AppColors.surface)
 
-            HStack(spacing: 12) {
-                // KB Type picker
-                Picker("Type", selection: $kettlebellType) {
-                    Text("Single").tag(KBType.single)
-                    Text("Double").tag(KBType.double)
-                }
-                .pickerStyle(.menu)
-                .tint(AppColors.textPrimary)
-
-                // Weight picker
-                Picker("Weight", selection: $weight) {
-                    ForEach(weights, id: \.self) { w in
-                        Text("\(w) kg").tag(w)
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(AppColors.textPrimary)
+                // Progress fill
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(accentColor)
+                    .frame(width: geometry.size.width * progress)
+                    .animation(.easeInOut(duration: 0.3), value: progress)
             }
         }
+        .frame(height: 8)
     }
 }
-```
 
-**Styling:**
-- Labels in textSecondary
-- Picker text in textPrimary (white)
-- Menu style pickers (compact, tap to expand)
-- Dark background inherited from parent
-
-**Dependencies:**
-- KBType enum (from Models)
-- AppColors, AppTypography (from Design)
-
----
-
-### DurationPicker.swift
-
-**Purpose:** Pick workout duration (EMOM minutes) or rounds + rest (Rounds mode)
-
-**Interface:**
-```swift
-struct DurationPicker: View {
-    let mode: WorkoutMode
-    @Binding var minutes: Int          // EMOM mode
-    @Binding var rounds: Int           // Rounds mode
-    @Binding var restSeconds: Int      // Rounds mode
-
-    var body: some View { ... }
+#Preview {
+    VStack(spacing: 20) {
+        RoundProgressBar(completed: 7, total: 20)
+        RoundProgressBar(completed: 15, total: 20)
+        RoundProgressBar(completed: 20, total: 20)
+    }
+    .padding()
+    .background(AppColors.background)
 }
 ```
 
-**Layout (EMOM mode):**
-```
-DURATION
-[20 minutes ▼]
-```
-
-**Layout (Rounds mode):**
-```
-TARGET ROUNDS
-[15 rounds ▼]
-
-REST BETWEEN SETS
-[60 seconds ▼]
-```
-
-**Implementation Notes:**
-
+### SessionCard.swift
 ```swift
-struct DurationPicker: View {
-    let mode: WorkoutMode
-    @Binding var minutes: Int
-    @Binding var rounds: Int
-    @Binding var restSeconds: Int
+// SessionCard.swift
 
-    // Minute options: 10, 12, 15, 18, 20, 22, 25, 30
-    private let minuteOptions = [10, 12, 15, 18, 20, 22, 25, 30]
+import SwiftUI
 
-    // Round options: 5, 8, 10, 12, 15, 18, 20, 25, 30
-    private let roundOptions = [5, 8, 10, 12, 15, 18, 20, 25, 30]
-
-    // Rest options: 30, 45, 60, 90, 120 seconds
-    private let restOptions = [30, 45, 60, 90, 120]
+struct SessionCard: View {
+    let session: WorkoutSession
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if mode == .emom {
-                // EMOM: Just minutes
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("DURATION")
-                        .font(AppTypography.sectionHeader)
-                        .foregroundColor(AppColors.textSecondary)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(session.date.formatted(date: .abbreviated, time: .omitted))
+                .font(AppTypography.body)
+                .foregroundColor(AppColors.textPrimary)
 
-                    Picker("Minutes", selection: $minutes) {
-                        ForEach(minuteOptions, id: \.self) { m in
-                            Text("\(m) minutes").tag(m)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(AppColors.textPrimary)
-                }
-            } else {
-                // Rounds: Target rounds + rest
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("TARGET ROUNDS")
-                        .font(AppTypography.sectionHeader)
-                        .foregroundColor(AppColors.textSecondary)
-
-                    Picker("Rounds", selection: $rounds) {
-                        ForEach(roundOptions, id: \.self) { r in
-                            Text("\(r) rounds").tag(r)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(AppColors.textPrimary)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("REST BETWEEN SETS")
-                        .font(AppTypography.sectionHeader)
-                        .foregroundColor(AppColors.textSecondary)
-
-                    Picker("Rest", selection: $restSeconds) {
-                        ForEach(restOptions, id: \.self) { s in
-                            Text("\(s) seconds").tag(s)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(AppColors.textPrimary)
-                }
+            HStack(spacing: 8) {
+                Text(session.weightDisplay)
+                Text("·")
+                Text(session.roundsDisplay)
+                Text("·")
+                Text(session.mode == .emom ? "EMOM" : "Rounds")
             }
-        }
-    }
-}
-```
+            .font(AppTypography.sectionHeader)
+            .foregroundColor(AppColors.textSecondary)
 
-**Dependencies:**
-- WorkoutMode enum (from Models)
-- AppColors, AppTypography (from Design)
-
----
-
-### TimerDisplay.swift
-
-**Purpose:** Large, prominent countdown display for active workout screens
-
-**Interface:**
-```swift
-struct TimerDisplay: View {
-    let seconds: Int                   // Countdown value
-    let isOvertime: Bool               // Show warning styling
-    let label: String?                 // Optional label below (e.g., "ROUND 7/20")
-
-    var body: some View { ... }
-}
-```
-
-**Layout:**
-```
-     0:47           ← Large monospace digits
-   ROUND 7/20       ← Optional label
-```
-
-**Implementation Notes:**
-
-```swift
-struct TimerDisplay: View {
-    let seconds: Int
-    let isOvertime: Bool
-    let label: String?
-
-    private var timeString: String {
-        let mins = seconds / 60
-        let secs = seconds % 60
-        return String(format: "%d:%02d", mins, secs)
-    }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Text(timeString)
-                .font(AppTypography.timer)
-                .monospacedDigit()              // Prevent layout shifts
-                .foregroundColor(isOvertime ? AppColors.warning : AppColors.textPrimary)
-
-            if let label = label {
-                Text(label)
-                    .font(AppTypography.roundCounter)
+            if let notes = session.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(AppTypography.sectionHeader)
                     .foregroundColor(AppColors.textSecondary)
+                    .lineLimit(1)
             }
         }
+        .padding(.vertical, 8)
     }
 }
 ```
 
-**Variants to Support:**
-- Normal state: White numbers
-- Overtime state: Red/warning color
-- Get Ready state: Could show "GET READY" instead of numbers
+## Dependencies
+- Design/AppColors.swift
+- Design/AppTypography.swift
+- Models/WorkoutSession.swift
 
-**Animation:**
-- Consider subtle pulse animation when countdown reaches 5-4-3-2-1
-- Or scale animation on beep
-
-**Dependencies:**
-- AppColors, AppTypography (from Design)
-
----
-
-## Usage Examples
-
-**In HomeView:**
-```swift
-WeightPicker(
-    kettlebellType: $kettlebellType,
-    weight: $weight
-)
-
-DurationPicker(
-    mode: mode,
-    minutes: $targetMinutes,
-    rounds: $targetRounds,
-    restSeconds: $restDuration
-)
-```
-
-**In EMOMTimerView:**
-```swift
-TimerDisplay(
-    seconds: 60 - Int(secondsIntoMinute),
-    isOvertime: secondsIntoMinute > 60,
-    label: "ROUND \(currentRound)/\(targetMinutes)"
-)
-```
-
----
-
-## Styling Consistency
-
-All components should:
-- Use `AppColors.background` for backgrounds (or be transparent)
-- Use `AppColors.textPrimary` (white) for values
-- Use `AppColors.textSecondary` for labels
-- Use `AppTypography` for fonts
-- Avoid borders/dividers unless necessary
-- Keep spacing tight but readable
+## Testing
+- RoundProgressBar animates correctly
+- SessionCard displays all session info
+- Components render in previews
