@@ -195,43 +195,53 @@ private struct ArmorInfoSheet: View {
         ZStack {
             AppColors.backgroundGradient.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(AppColors.textSecondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack {
+                        Spacer()
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppColors.textSecondary)
+                        }
                     }
+
+                    Text("THE ARMOR BUILDING COMPLEX")
+                        .font(AppTypography.title)
+                        .foregroundColor(AppColors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .minimumScaleFactor(0.7)
+
+                    Link(destination: URL(string: "https://danjohnuniversity.com")!) {
+                        HStack(spacing: 4) {
+                            Text("Created by Dan John")
+                                .font(AppTypography.body)
+                                .foregroundColor(AppColors.textSecondary)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 12))
+                                .foregroundColor(AppColors.textSecondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        repRow(count: "2", exercise: "Cleans")
+                        repRow(count: "1", exercise: "Press")
+                        repRow(count: "3", exercise: "Front Squats")
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.surface)
+                    .cornerRadius(8)
+
+                    Text("One round = one complex. Use EMOM mode to work every minute on the minute, or Rounds mode to set a target number of complexes with rest between each.")
+                        .font(AppTypography.body)
+                        .foregroundColor(AppColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Text("THE ARMOR BUILDING COMPLEX")
-                    .font(AppTypography.title)
-                    .foregroundColor(AppColors.textPrimary)
-
-                Text("by Dan John")
-                    .font(AppTypography.body)
-                    .foregroundColor(AppColors.textSecondary)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    repRow(count: "2", exercise: "Cleans")
-                    repRow(count: "1", exercise: "Press")
-                    repRow(count: "3", exercise: "Front Squats")
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AppColors.surface)
-                .cornerRadius(8)
-
-                Text("One round = one complex. Use EMOM mode to work every minute on the minute, or Rounds mode to set a target number of complexes with rest between each.")
-                    .font(AppTypography.body)
-                    .foregroundColor(AppColors.textSecondary)
-
-                Spacer()
+                .padding(24)
             }
-            .padding(24)
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 
     private func repRow(count: String, exercise: String) -> some View {
