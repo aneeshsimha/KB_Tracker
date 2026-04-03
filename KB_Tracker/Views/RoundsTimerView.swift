@@ -24,7 +24,7 @@ struct RoundsTimerView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 header
@@ -168,7 +168,7 @@ struct RoundsTimerView: View {
                     .foregroundColor(AppColors.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
-                    .background(AppColors.accent)
+                    .background(AppColors.accentGradient)
                     .cornerRadius(8)
             }
 
@@ -192,7 +192,7 @@ struct RoundsTimerView: View {
                     .foregroundColor(AppColors.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(AppColors.accent)
+                    .background(AppColors.accentGradient)
                     .cornerRadius(8)
             }
         }

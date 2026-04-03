@@ -16,6 +16,7 @@ struct HomeView: View {
     @State private var targetRounds: Int = 15        // Rounds mode
     @State private var restDuration: Int = 60        // Rounds mode
     @State private var showingWorkout: Bool = false
+    @State private var showingInfo: Bool = false
 
     private var lastSession: WorkoutSession? {
         sessions.first(where: { $0.isCompleted })
@@ -23,14 +24,22 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     // App Title
-                    Text("ARMOR")
-                        .font(AppTypography.title)
-                        .foregroundColor(AppColors.textPrimary)
+                    HStack {
+                        Text("ARMOR")
+                            .font(AppTypography.title)
+                            .foregroundColor(AppColors.textPrimary)
+                        Spacer()
+                        Button { showingInfo = true } label: {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 20))
+                                .foregroundColor(AppColors.textSecondary)
+                        }
+                    }
 
                     // Last Workout Card
                     if let last = lastSession {
@@ -78,6 +87,9 @@ struct HomeView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showingInfo) {
+            ArmorInfoSheet()
+        }
     }
 
     // MARK: - Last Workout Card
@@ -100,6 +112,14 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppColors.surface)
         .cornerRadius(8)
+        .overlay(
+            HStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(AppColors.accent)
+                    .frame(width: 3)
+                Spacer()
+            }
+        )
     }
 
     // MARK: - Mode Toggle
@@ -122,7 +142,7 @@ struct HomeView: View {
                 .foregroundColor(AppColors.background)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(AppColors.accent)
+                .background(AppColors.accentGradient)
                 .cornerRadius(8)
         }
     }
@@ -162,6 +182,67 @@ struct HomeView: View {
         } else {
             targetRounds = last.targetRounds
             restDuration = last.restDuration ?? 60
+        }
+    }
+}
+
+// MARK: - Armor Info Sheet
+
+private struct ArmorInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            AppColors.backgroundGradient.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(AppColors.textSecondary)
+                    }
+                }
+
+                Text("THE ARMOR BUILDING COMPLEX")
+                    .font(AppTypography.title)
+                    .foregroundColor(AppColors.textPrimary)
+
+                Text("by Dan John")
+                    .font(AppTypography.body)
+                    .foregroundColor(AppColors.textSecondary)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    repRow(count: "2", exercise: "Cleans")
+                    repRow(count: "1", exercise: "Press")
+                    repRow(count: "3", exercise: "Front Squats")
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppColors.surface)
+                .cornerRadius(8)
+
+                Text("One round = one complex. Use EMOM mode to work every minute on the minute, or Rounds mode to set a target number of complexes with rest between each.")
+                    .font(AppTypography.body)
+                    .foregroundColor(AppColors.textSecondary)
+
+                Spacer()
+            }
+            .padding(24)
+        }
+        .presentationDetents([.medium])
+    }
+
+    private func repRow(count: String, exercise: String) -> some View {
+        HStack(spacing: 12) {
+            Text(count)
+                .font(AppTypography.title)
+                .foregroundColor(AppColors.accent)
+                .frame(width: 32)
+            Text(exercise)
+                .font(AppTypography.body)
+                .foregroundColor(AppColors.textPrimary)
         }
     }
 }

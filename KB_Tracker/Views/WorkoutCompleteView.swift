@@ -19,7 +19,7 @@ struct WorkoutCompleteView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -92,7 +92,7 @@ struct WorkoutCompleteView: View {
                             .foregroundColor(AppColors.background)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(AppColors.accent)
+                            .background(AppColors.accentGradient)
                             .cornerRadius(8)
                     }
                 }

@@ -24,7 +24,7 @@ struct EMOMTimerView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 header
@@ -145,7 +145,13 @@ struct EMOMTimerView: View {
                 .foregroundColor(viewModel.isSetInProgress ? AppColors.background : AppColors.textSecondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-                .background(viewModel.isSetInProgress ? AppColors.accent : AppColors.surface)
+                .background {
+                    if viewModel.isSetInProgress {
+                        AppColors.accentGradient
+                    } else {
+                        LinearGradient(colors: [AppColors.surface, AppColors.surface], startPoint: .leading, endPoint: .trailing)
+                    }
+                }
                 .cornerRadius(8)
         }
         .disabled(!viewModel.isSetInProgress)

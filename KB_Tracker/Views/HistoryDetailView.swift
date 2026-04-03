@@ -13,7 +13,7 @@ struct HistoryDetailView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -23,17 +23,24 @@ struct HistoryDetailView: View {
                         .foregroundColor(AppColors.textSecondary)
 
                     // Main Stats
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(session.roundsDisplay)
-                            .font(AppTypography.title)
-                            .foregroundColor(AppColors.textPrimary)
-                        Text("ROUNDS")
-                            .font(AppTypography.body)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(session.roundsDisplay)
+                                .font(AppTypography.title)
+                                .foregroundColor(session.completedRounds >= session.targetRounds ? AppColors.accent : AppColors.warning)
+                            Text("ROUNDS")
+                                .font(AppTypography.body)
+                                .foregroundColor(AppColors.textSecondary)
+                        }
+                        Text("completed / target")
+                            .font(AppTypography.sectionHeader)
                             .foregroundColor(AppColors.textSecondary)
                     }
 
                     // Details Grid
                     VStack(alignment: .leading, spacing: 16) {
+                        detailRow(label: "Target Rounds", value: "\(session.targetRounds)")
+                        detailRow(label: "Completed", value: "\(session.completedRounds)")
                         detailRow(label: "Weight", value: session.weightDisplay)
                         detailRow(label: "Mode", value: session.mode == .emom ? "EMOM" : "Rounds")
 

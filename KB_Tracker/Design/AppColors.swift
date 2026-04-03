@@ -38,28 +38,47 @@ extension Color {
 struct AppColors {
     // MARK: - Background Colors
 
-    /// Near-black background for the main app
-    static let background = Color(hex: "#050505")
+    /// Warm near-black background
+    static let background = Color(hex: "#0A0908")
 
-    /// Slightly elevated surface color for cards and containers
-    static let surface = Color(hex: "#111111")
+    /// Dark espresso surface for cards and containers
+    static let surface = Color(hex: "#161210")
 
-    /// Subtle border color for separators and outlines
-    static let border = Color(hex: "#222222")
+    /// Warm border for separators and outlines
+    static let border = Color(hex: "#2A2420")
 
     // MARK: - Text Colors
 
-    /// Primary text color (white)
-    static let textPrimary = Color.white
+    /// Primary text color (warm cream)
+    static let textPrimary = Color(hex: "#F5EDE4")
 
-    /// Secondary/muted text color
-    static let textSecondary = Color(hex: "#666666")
+    /// Secondary/muted text color (warm gray)
+    static let textSecondary = Color(hex: "#8A7D6F")
 
     // MARK: - Accent Colors
 
-    /// Accent color for buttons and highlights
-    static let accent = Color.white
+    /// Copper accent for buttons and highlights
+    static let accent = Color(hex: "#D4845A")
 
-    /// Warning/overtime indicator color
-    static let warning = Color(hex: "#FF3B30")
+    /// Darker copper for gradient endpoints
+    static let accentDark = Color(hex: "#B06A42")
+
+    /// Warning/overtime indicator color (warmer red)
+    static let warning = Color(hex: "#E5503E")
+
+    // MARK: - Gradients
+
+    /// Subtle warm background gradient
+    static let backgroundGradient = LinearGradient(
+        colors: [Color(hex: "#0A0908"), Color(hex: "#0F0C09")],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    /// Copper button gradient
+    static let accentGradient = LinearGradient(
+        colors: [Color(hex: "#D4845A"), Color(hex: "#B06A42")],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
 }

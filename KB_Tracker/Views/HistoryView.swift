@@ -12,7 +12,7 @@ struct HistoryView: View {
 
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient.ignoresSafeArea()
 
             if sessions.isEmpty {
                 VStack(spacing: 16) {
@@ -52,13 +52,17 @@ struct HistoryView: View {
 
             HStack(spacing: 8) {
                 Text(session.weightDisplay)
+                    .foregroundColor(AppColors.textSecondary)
                 Text("·")
-                Text(session.roundsDisplay)
+                    .foregroundColor(AppColors.textSecondary)
+                Text("\(session.completedRounds)/\(session.targetRounds) rounds")
+                    .foregroundColor(session.completedRounds >= session.targetRounds ? AppColors.accent : AppColors.warning)
                 Text("·")
+                    .foregroundColor(AppColors.textSecondary)
                 Text(session.mode == .emom ? "EMOM" : "Rounds")
+                    .foregroundColor(AppColors.textSecondary)
             }
             .font(AppTypography.sectionHeader)
-            .foregroundColor(AppColors.textSecondary)
 
             if let notes = session.notes, !notes.isEmpty {
                 Text(notes)
