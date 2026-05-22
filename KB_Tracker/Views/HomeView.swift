@@ -19,6 +19,8 @@ struct HomeView: View {
     @State private var restDuration: Int = 60        // Rounds mode
 
     @State private var route: HomeRoute?
+    @State private var workoutType: WorkoutType = .abc
+    @State private var targetLadders: Int = 5        // press
 
     private var lastSession: WorkoutSession? {
         sessions.first(where: { $0.isCompleted })
@@ -49,7 +51,10 @@ struct HomeView: View {
 
                 // Footer: start
                 PrimaryButton(title: startTitle) {
-                    route = mode == .emom ? .emom : .rounds
+                    switch workoutType {
+                    case .abc:   route = mode == .emom ? .emom : .rounds
+                    case .press: route = .press
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 4)
@@ -73,6 +78,14 @@ struct HomeView: View {
                         weight: weight,
                         rounds: targetRounds,
                         restSeconds: restDuration
+                    )
+                )
+            case .press:
+                PressLadderView(
+                    config: .press(
+                        kettlebellType: kettlebellType,
+                        weight: weight,
+                        targetLadders: targetLadders
                     )
                 )
             case .history:
@@ -108,9 +121,29 @@ struct HomeView: View {
 
     private var setupBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Mode
-            Eyebrow("MODE")
+            Eyebrow("WORKOUT")
                 .padding(.bottom, 8)
+            SegmentedToggle(
+                options: [
+                    SegmentedOption(label: "ABC", value: WorkoutType.abc),
+                    SegmentedOption(label: "Press", value: WorkoutType.press),
+                ],
+                selection: $workoutType
+            )
+            .padding(.bottom, 22)
+
+            if workoutType == .abc {
+                abcSetup
+            } else {
+                pressSetup
+            }
+        }
+        .padding(.top, 16)
+    }
+
+    private var abcSetup: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Eyebrow("MODE").padding(.bottom, 8)
             SegmentedToggle(
                 options: [
                     SegmentedOption(label: "EMOM", value: WorkoutMode.emom),
@@ -120,7 +153,6 @@ struct HomeView: View {
             )
             .padding(.bottom, 22)
 
-            // Dial: load + weight
             Dial(
                 eyebrow: "LOAD",
                 value: "\(weight)",
@@ -140,11 +172,56 @@ struct HomeView: View {
             }
 
             Spacer().frame(height: 14)
-
-            // Dial: duration / rounds
             durationDial
         }
-        .padding(.top, 16)
+    }
+
+    private var pressSetup: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Dial(
+                eyebrow: "LADDERS",
+                value: "\(targetLadders)",
+                unit: "× 2·3·5·10",
+                onMinus: { targetLadders = max(1, targetLadders - 1) },
+                onPlus: { targetLadders = min(10, targetLadders + 1) }
+            ) {
+                HStack {
+                    Text("Total reps")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.ink3)
+                    Spacer()
+                    Text("\(targetLadders * 20)")
+                        .font(AppTypography.mono(12, weight: .regular))
+                        .foregroundColor(AppColors.ink3)
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 4)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(AppColors.hairline).frame(height: 1)
+                }
+                .padding(.top, 4)
+            }
+
+            Spacer().frame(height: 14)
+
+            Dial(
+                eyebrow: "LOAD",
+                value: "\(weight)",
+                unit: kettlebellType == .double ? "kg × 2" : "kg",
+                onMinus: { stepWeight(-1) },
+                onPlus: { stepWeight(+1) }
+            ) {
+                SegmentedToggle(
+                    options: [
+                        SegmentedOption(label: "Single", value: KBType.single),
+                        SegmentedOption(label: "Double", value: KBType.double),
+                    ],
+                    selection: $kettlebellType,
+                    inline: true
+                )
+                .padding(.top, 2)
+            }
+        }
     }
 
     @ViewBuilder
@@ -209,7 +286,10 @@ struct HomeView: View {
     }
 
     private var startTitle: String {
-        mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
+        switch workoutType {
+        case .abc:   return mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
+        case .press: return "Start · \(targetLadders) ladders"
+        }
     }
 
     // MARK: - Last-session card
@@ -326,6 +406,7 @@ struct HomeView: View {
 fileprivate enum HomeRoute: Hashable, Identifiable {
     case emom
     case rounds
+    case press
     case history
 
     var id: Self { self }
