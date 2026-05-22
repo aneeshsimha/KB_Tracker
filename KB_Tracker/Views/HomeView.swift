@@ -1,7 +1,9 @@
 // HomeView.swift
 // KB_Tracker
 //
-// Main screen - workout configuration and start
+// Home / workout setup screen. Ported from home.jsx — gravl-style layout
+// with big mono numerals as the focal point, supporting controls reduced to
+// small text + ± steppers.
 
 import SwiftUI
 import SwiftData
@@ -15,7 +17,8 @@ struct HomeView: View {
     @State private var targetMinutes: Int = 20       // EMOM
     @State private var targetRounds: Int = 15        // Rounds mode
     @State private var restDuration: Int = 60        // Rounds mode
-    @State private var showingWorkout: Bool = false
+
+    @State private var route: HomeRoute?
 
     private var lastSession: WorkoutSession? {
         sessions.first(where: { $0.isCompleted })
@@ -25,47 +28,55 @@ struct HomeView: View {
         ZStack {
             AppColors.background.ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // App Title
-                    Text("ARMOR")
-                        .font(AppTypography.title)
-                        .foregroundColor(AppColors.textPrimary)
+            VStack(spacing: 0) {
+                header
 
-                    // Last Workout Card
-                    if let last = lastSession {
-                        lastWorkoutCard(session: last)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Last-session card (or first-time prompt)
+                        if let last = lastSession {
+                            lastSessionCard(session: last)
+                        } else {
+                            firstTimeCard
+                        }
+
+                        setupBlock
                     }
-
-                    // Mode Toggle
-                    modeToggle
-
-                    // Weight Picker
-                    WeightPicker(
-                        kettlebellType: $kettlebellType,
-                        weight: $weight
-                    )
-
-                    // Duration Picker
-                    DurationPicker(
-                        mode: mode,
-                        minutes: $targetMinutes,
-                        rounds: $targetRounds,
-                        restSeconds: $restDuration
-                    )
-
-                    // START Button
-                    startButton
-
-                    // History Link
-                    NavigationLink(destination: HistoryView()) {
-                        Text("History")
-                            .font(AppTypography.body)
-                            .foregroundColor(AppColors.textSecondary)
-                    }
-                    .padding(.top, 8)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .padding(.bottom, 20)
                 }
-                .padding(24)
+
+                // Footer: start
+                PrimaryButton(title: startTitle) {
+                    route = mode == .emom ? .emom : .rounds
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 20)
+            }
+        }
+        .navigationDestination(item: $route) { dest in
+            switch dest {
+            case .emom:
+                EMOMTimerView(
+                    config: .emom(
+                        kettlebellType: kettlebellType,
+                        weight: weight,
+                        minutes: targetMinutes
+                    )
+                )
+            case .rounds:
+                RoundsTimerView(
+                    config: .rounds(
+                        kettlebellType: kettlebellType,
+                        weight: weight,
+                        rounds: targetRounds,
+                        restSeconds: restDuration
+                    )
+                )
+            case .history:
+                HistoryView()
             }
         }
         .onAppear {
@@ -80,76 +91,220 @@ struct HomeView: View {
         .navigationBarHidden(true)
     }
 
-    // MARK: - Last Workout Card
+    // MARK: - Header
 
-    private func lastWorkoutCard(session: WorkoutSession) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("LAST WORKOUT")
-                .font(AppTypography.sectionHeader)
-                .foregroundColor(AppColors.textSecondary)
-
-            Text("\(session.weightDisplay) · \(session.roundsDisplay) rounds")
-                .font(AppTypography.body)
-                .foregroundColor(AppColors.textPrimary)
-
-            Text(session.date.formatted(date: .abbreviated, time: .omitted))
-                .font(AppTypography.body)
-                .foregroundColor(AppColors.textSecondary)
+    private var header: some View {
+        HStack {
+            Eyebrow("KB · TRACKER")
+            Spacer()
+            IconButton(icon: .history) { route = .history }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColors.surface)
-        .cornerRadius(8)
+        .padding(.horizontal, 20)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
     }
 
-    // MARK: - Mode Toggle
+    // MARK: - Setup block
 
-    private var modeToggle: some View {
-        Picker("Mode", selection: $mode) {
-            Text("EMOM").tag(WorkoutMode.emom)
-            Text("ROUNDS").tag(WorkoutMode.rounds)
+    private var setupBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Mode
+            Eyebrow("MODE")
+                .padding(.bottom, 8)
+            SegmentedToggle(
+                options: [
+                    SegmentedOption(label: "EMOM", value: WorkoutMode.emom),
+                    SegmentedOption(label: "Rounds", value: WorkoutMode.rounds),
+                ],
+                selection: $mode
+            )
+            .padding(.bottom, 22)
+
+            // Dial: load + weight
+            Dial(
+                eyebrow: "LOAD",
+                value: "\(weight)",
+                unit: kettlebellType == .double ? "kg × 2" : "kg",
+                onMinus: { stepWeight(-1) },
+                onPlus: { stepWeight(+1) }
+            ) {
+                SegmentedToggle(
+                    options: [
+                        SegmentedOption(label: "Single", value: KBType.single),
+                        SegmentedOption(label: "Double", value: KBType.double),
+                    ],
+                    selection: $kettlebellType,
+                    inline: true
+                )
+                .padding(.top, 2)
+            }
+
+            Spacer().frame(height: 14)
+
+            // Dial: duration / rounds
+            durationDial
         }
-        .pickerStyle(.segmented)
-        .colorMultiply(AppColors.textPrimary)
-    }
-
-    // MARK: - Start Button
-
-    private var startButton: some View {
-        NavigationLink(destination: destinationView) {
-            Text("START")
-                .font(AppTypography.button)
-                .foregroundColor(AppColors.background)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(AppColors.accent)
-                .cornerRadius(8)
-        }
+        .padding(.top, 16)
     }
 
     @ViewBuilder
-    private var destinationView: some View {
+    private var durationDial: some View {
         if mode == .emom {
-            EMOMTimerView(
-                config: .emom(
-                    kettlebellType: kettlebellType,
-                    weight: weight,
-                    minutes: targetMinutes
-                )
-            )
+            Dial(
+                eyebrow: "DURATION",
+                value: "\(targetMinutes)",
+                unit: "min",
+                onMinus: { stepDuration(-1) },
+                onPlus: { stepDuration(+1) }
+            ) {
+                HStack {
+                    Text("Total work")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.ink3)
+                    Spacer()
+                    Text(mmss(targetMinutes * 60))
+                        .font(AppTypography.mono(12, weight: .regular))
+                        .foregroundColor(AppColors.ink3)
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 4)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(AppColors.hairline)
+                        .frame(height: 1)
+                }
+                .padding(.top, 4)
+            }
         } else {
-            RoundsTimerView(
-                config: .rounds(
-                    kettlebellType: kettlebellType,
-                    weight: weight,
-                    rounds: targetRounds,
-                    restSeconds: restDuration
-                )
-            )
+            Dial(
+                eyebrow: "ROUNDS",
+                value: "\(targetRounds)",
+                unit: "rds",
+                onMinus: { stepDuration(-1) },
+                onPlus: { stepDuration(+1) }
+            ) {
+                HStack {
+                    Eyebrow("REST")
+                    Spacer()
+                    HStack(spacing: 10) {
+                        StepperButton(icon: .minus) { stepRest(-1) }
+                        Text(mmss(restDuration))
+                            .font(AppTypography.mono(17, weight: .bold))
+                            .foregroundColor(AppColors.ink)
+                            .frame(minWidth: 56)
+                            .multilineTextAlignment(.center)
+                        StepperButton(icon: .plus) { stepRest(+1) }
+                    }
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 4)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(AppColors.hairline)
+                        .frame(height: 1)
+                }
+                .padding(.top, 4)
+            }
         }
     }
 
-    // MARK: - Prefill Logic
+    private var startTitle: String {
+        mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
+    }
+
+    // MARK: - Last-session card
+
+    private func lastSessionCard(session: WorkoutSession) -> some View {
+        Button {
+            route = .history
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Eyebrow("LAST SESSION · \(relativeDay(session.date).uppercased())")
+                    Spacer()
+                    Image(systemName: KBIcon.chevron.rawValue)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(AppColors.ink4)
+                }
+                .padding(.bottom, 10)
+
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        Text("\(session.completedRounds)")
+                            .font(AppTypography.mono(38, weight: .bold))
+                            .foregroundColor(AppColors.ink)
+                        Text("/\(session.targetRounds)")
+                            .font(AppTypography.mono(38, weight: .medium))
+                            .foregroundColor(AppColors.ink3)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(session.mode == .emom ? "EMOM" : "Rounds") · \(session.weightDisplay)")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(AppColors.ink)
+                        Text("\(mmss(Int(session.totalDuration))) total")
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.ink3)
+                    }
+                }
+
+                if !session.setTimes.isEmpty {
+                    SparkBars(times: session.setTimes, mode: session.mode)
+                        .padding(.top, 12)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .kbCard()
+        }
+        .buttonStyle(TapScaleStyle())
+    }
+
+    // MARK: - First-time card
+
+    private var firstTimeCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(AppColors.surface2)
+                    .overlay(Circle().stroke(AppColors.hairline, lineWidth: 1))
+                KettlebellGlyph(size: 26)
+            }
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Eyebrow("FIRST SESSION")
+                Text("Pick your kit, your clock, your target. Then move.")
+                    .font(.system(size: 14))
+                    .foregroundColor(AppColors.ink2)
+                    .lineSpacing(14 * 0.35)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .kbCard()
+    }
+
+    // MARK: - Steppers
+
+    private func stepWeight(_ d: Int) {
+        weight = max(12, min(24, weight + d * 2))
+    }
+
+    private func stepDuration(_ d: Int) {
+        if mode == .emom {
+            targetMinutes = max(10, min(30, targetMinutes + d))
+        } else {
+            targetRounds = max(5, min(20, targetRounds + d))
+        }
+    }
+
+    private func stepRest(_ d: Int) {
+        restDuration = max(30, min(120, restDuration + d * 15))
+    }
+
+    // MARK: - Prefill logic
 
     private func prefillFromLastSession() {
         guard let last = lastSession else { return }
@@ -164,6 +319,33 @@ struct HomeView: View {
             restDuration = last.restDuration ?? 60
         }
     }
+}
+
+// MARK: - Navigation route
+
+fileprivate enum HomeRoute: Hashable, Identifiable {
+    case emom
+    case rounds
+    case history
+
+    var id: Self { self }
+}
+
+// MARK: - Formatting helpers
+
+/// Seconds → zero-padded "MM:SS" (matches home.jsx fmt.mmss).
+fileprivate func mmss(_ seconds: Int) -> String {
+    TimeInterval(max(0, seconds)).formattedMinutesSecondsPadded
+}
+
+/// Relative day string (Today / Yesterday / N days ago …), from home.jsx fmt.relativeDay.
+fileprivate func relativeDay(_ date: Date) -> String {
+    let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
+    if days <= 0 { return "Today" }
+    if days == 1 { return "Yesterday" }
+    if days < 7 { return "\(days) days ago" }
+    if days < 14 { return "Last week" }
+    return "\(days / 7) weeks ago"
 }
 
 #Preview {

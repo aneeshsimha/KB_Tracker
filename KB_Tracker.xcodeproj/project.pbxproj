@@ -33,11 +33,25 @@
 		B45711DB2F199D5F000EF356 /* Exceptions for "KB_Tracker" folder in "KB_Tracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				App/PLAN.md,
+				App/mvp_milestones.md,
 				Components/PLAN.md,
+				Components/mvp_milestones.md,
 				Design/PLAN.md,
+				Design/mvp_milestones.md,
+				Extensions/PLAN.md,
+				Extensions/mvp_milestones.md,
 				Models/PLAN.md,
+				Models/mvp_milestones.md,
+				Resources/PLAN.md,
+				Resources/mvp_milestones.md,
+				Services/PLAN.md,
+				Services/mvp_milestones.md,
 				Utilities/PLAN.md,
+				ViewModels/PLAN.md,
+				ViewModels/mvp_milestones.md,
 				Views/PLAN.md,
+				Views/mvp_milestones.md,
 			);
 			target = B45711D82F199D5E000EF355 /* KB_Tracker */;
 		};

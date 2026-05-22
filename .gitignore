@@ -1,0 +1,15 @@
+# Build
+/build
+DerivedData/
+
+# Xcode user-specific
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+
+# macOS
+.DS_Store
+
+# Tools
+.claude/
+.conductor/

@@ -1,7 +1,7 @@
 // RoundsTimerView.swift
 // KB_Tracker
 //
-// Active workout screen for Rounds-with-Rest mode
+// Active workout screen for Rounds-with-Rest mode (timer.jsx: ready / work / rest).
 
 import SwiftUI
 import SwiftData
@@ -26,179 +26,259 @@ struct RoundsTimerView: View {
         ZStack {
             AppColors.background.ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                header
+            VStack(spacing: 0) {
+                TimerChrome(
+                    label: chromeLabel,
+                    current: max(0, viewModel.currentRound - 1),
+                    total: config.targetRounds,
+                    onEnd: { showExitConfirmation = true }
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                mainDisplay
+                content
 
-                if viewModel.roundsPhase != .getReady {
-                    Text("ROUND \(viewModel.currentRound)/\(config.targetRounds)")
-                        .font(AppTypography.roundCounter)
-                        .foregroundColor(AppColors.textPrimary)
-                }
+                Spacer(minLength: 0)
 
-                if viewModel.roundsPhase != .getReady && viewModel.roundsPhase != .complete {
-                    Text("Total: \(viewModel.totalElapsed.formattedMinutesSecondsPadded)")
-                        .font(AppTypography.body)
-                        .foregroundColor(AppColors.textSecondary)
-                }
-
-                Spacer()
-
-                actionButton
-
-                if let lastTime = viewModel.setTimes.last, viewModel.roundsPhase != .getReady {
-                    Text("Last set: \(lastTime.formattedMinutesSecondsPadded)")
-                        .font(AppTypography.body)
-                        .foregroundColor(AppColors.textSecondary)
-                }
+                footer
             }
-            .padding(24)
         }
         .navigationBarHidden(true)
-        .onAppear {
-            viewModel.start()
-        }
-        .onDisappear {
-            viewModel.stop()
-        }
-        .alert("Exit Workout?", isPresented: $showExitConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Save Progress", role: .none) {
-                viewModel.savePartialWorkout()
-                navigateToSummary = true
-            }
-            Button("Discard", role: .destructive) {
-                dismiss()
-            }
-        } message: {
-            Text("Would you like to save your progress or discard this workout?")
-        }
-        .navigationDestination(isPresented: $navigateToSummary) {
-            if let session = viewModel.session {
-                WorkoutCompleteView(session: session) {
-                    dismiss()
+        .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
+        .onChange(of: viewModel.roundsPhase) { _, newPhase in
+            if newPhase == .complete {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    navigateToSummary = true
                 }
             }
         }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            Text(viewModel.weightDisplay)
-                .font(AppTypography.body)
-                .foregroundColor(AppColors.textPrimary)
-            Spacer()
-            Button(action: { showExitConfirmation = true }) {
-                Image(systemName: "xmark")
-                    .foregroundColor(AppColors.textSecondary)
+        .confirmSheet(
+            isPresented: $showExitConfirmation,
+            title: "End this session?",
+            message: "Your progress won't be saved.",
+            confirmLabel: "End",
+            cancelLabel: "Keep going",
+            onConfirm: { dismiss() }
+        )
+        .navigationDestination(isPresented: $navigateToSummary) {
+            if let session = viewModel.session {
+                WorkoutCompleteView(session: session) { dismiss() }
             }
         }
     }
 
-    // MARK: - Main Display
+    private var chromeLabel: String {
+        switch viewModel.roundsPhase {
+        case .getReady: return "GET READY"
+        case .working:  return "ROUND \(viewModel.currentRound)"
+        case .resting:  return "REST"
+        case .complete: return "DONE"
+        }
+    }
+
+    // MARK: - Center content
 
     @ViewBuilder
-    private var mainDisplay: some View {
+    private var content: some View {
         switch viewModel.roundsPhase {
         case .getReady:
-            VStack(spacing: 16) {
-                Text("GET READY")
-                    .font(AppTypography.title)
-                    .foregroundColor(AppColors.textSecondary)
-                Text("\(viewModel.getReadyCountdown)")
-                    .font(AppTypography.timer)
-                    .foregroundColor(AppColors.textPrimary)
-                    .monospacedDigit()
-            }
-
+            readyContent
         case .working:
-            VStack(spacing: 16) {
-                Text("WORKING")
-                    .font(AppTypography.title)
-                    .foregroundColor(AppColors.accent)
-                Text(viewModel.currentSetElapsed.formattedMinutesSecondsPadded)
-                    .font(AppTypography.timer)
-                    .foregroundColor(AppColors.textPrimary)
+            workContent
+        case .resting:
+            restContent
+        case .complete:
+            VStack(spacing: 12) {
+                Eyebrow("ROUNDS · COMPLETE", color: AppColors.ink3)
+                Text("\(viewModel.currentRound)")
+                    .font(AppTypography.timerXL)
+                    .foregroundColor(AppColors.ink)
                     .monospacedDigit()
             }
+        }
+    }
+
+    private var readyContent: some View {
+        let digit = max(1, viewModel.getReadyCountdown)
+        return VStack(spacing: 0) {
+            Eyebrow("ROUNDS · STARTING", color: AppColors.ink3)
+                .padding(.bottom, 16)
+
+            Text("\(digit)")
+                .font(.system(size: 220, weight: .bold, design: .monospaced))
+                .foregroundColor(AppColors.ink)
+                .monospacedDigit()
+                .id(digit)
+                .transition(.scale(scale: 0.94).combined(with: .opacity))
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: digit)
+
+            (
+                Text("\(config.weightDisplay)")
+                    .font(AppTypography.mono(18, weight: .semibold))
+                + Text("  ·  ")
+                    .foregroundColor(AppColors.ink4)
+                + Text("\(config.targetRounds) rounds · \(mmss(config.restDuration ?? 0)) rest")
+                    .font(.system(size: 14))
+            )
+            .foregroundColor(AppColors.ink2)
+            .padding(.top, 20)
+        }
+    }
+
+    private var workContent: some View {
+        VStack(spacing: 0) {
+            Text(mmss(viewModel.currentSetElapsed))
+                .font(AppTypography.timerXL)
+                .foregroundColor(AppColors.ink)
+                .monospacedDigit()
+                .kerning(-4)
+
+            Eyebrow("ELAPSED THIS ROUND", color: AppColors.ink3)
+                .padding(.top, 12)
+
+            ComplexReminderRow()
+                .padding(.top, 28)
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private var restContent: some View {
+        VStack(spacing: 0) {
+            Eyebrow("SET LOGGED", color: AppColors.ink3)
+                .padding(.bottom, 6)
+
+            Text(mmss(viewModel.setTimes.last ?? 0))
+                .font(AppTypography.mono(28, weight: .semibold))
+                .foregroundColor(AppColors.ink2)
+                .padding(.bottom, 40)
+
+            Text(mmss(viewModel.restCountdown))
+                .font(AppTypography.timerLg)
+                .foregroundColor(AppColors.ink)
+                .monospacedDigit()
+                .kerning(-2)
+
+            Eyebrow("UNTIL ROUND \(viewModel.currentRound + 1)", color: AppColors.ink3)
+                .padding(.top, 12)
+
+            restProgressBar
+                .frame(width: 200, height: 4)
+                .padding(.top, 28)
+        }
+    }
+
+    private var restProgressBar: some View {
+        let total = max(1, config.restDuration ?? 1)
+        let done = total - viewModel.restCountdown
+        let fraction = min(1, max(0, CGFloat(done) / CGFloat(total)))
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(AppColors.surface2)
+                Capsule().fill(AppColors.ink)
+                    .frame(width: geo.size.width * fraction)
+            }
+        }
+    }
+
+    // MARK: - Footer
+
+    @ViewBuilder
+    private var footer: some View {
+        switch viewModel.roundsPhase {
+        case .working:
+            VStack(spacing: 12) {
+                Button(action: { viewModel.handleRoundsSetDone() }) {
+                    Text("Set Done")
+                        .font(.system(size: 18, weight: .bold))
+                        .kerning(18 * 0.08)
+                        .textCase(.uppercase)
+                        .foregroundColor(AppColors.background)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 76)
+                        .background(AppColors.ink)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(TapScaleStyle())
+
+                if !viewModel.setTimes.isEmpty {
+                    HStack {
+                        lastAvg(label: "Last set", value: viewModel.setTimes.last ?? 0)
+                        Spacer()
+                        lastAvg(label: "Avg", value: averageSetTime)
+                    }
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.ink3)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
 
         case .resting:
-            VStack(spacing: 16) {
-                Text("REST")
-                    .font(AppTypography.title)
-                    .foregroundColor(AppColors.textSecondary)
-                Text("\(viewModel.restCountdown)")
-                    .font(AppTypography.timer)
-                    .foregroundColor(viewModel.restCountdown <= 5 ? AppColors.warning : AppColors.textPrimary)
-                    .monospacedDigit()
-            }
+            GhostButton(title: "Skip rest") { viewModel.skipRest() }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
 
-        case .complete:
-            VStack(spacing: 16) {
-                Text("COMPLETE!")
-                    .font(AppTypography.title)
-                    .foregroundColor(AppColors.accent)
-                Text("\(viewModel.currentRound)/\(config.targetRounds)")
-                    .font(AppTypography.timer)
-                    .foregroundColor(AppColors.textPrimary)
-                Text("rounds")
-                    .font(AppTypography.body)
-                    .foregroundColor(AppColors.textSecondary)
-            }
-        }
-    }
-
-    // MARK: - Action Button
-
-    @ViewBuilder
-    private var actionButton: some View {
-        switch viewModel.roundsPhase {
-        case .getReady:
+        default:
             EmptyView()
+        }
+    }
 
-        case .working:
-            Button(action: { viewModel.handleRoundsSetDone() }) {
-                Text("SET DONE")
-                    .font(AppTypography.button)
-                    .foregroundColor(AppColors.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(AppColors.accent)
-                    .cornerRadius(8)
-            }
+    private func lastAvg(label: String, value: TimeInterval) -> some View {
+        HStack(spacing: 6) {
+            Text("\(label):")
+            Text(mmss(value))
+                .font(AppTypography.mono(12, weight: .semibold))
+                .foregroundColor(AppColors.ink2)
+        }
+    }
 
-        case .resting:
-            Button(action: { viewModel.skipRest() }) {
-                Text("SKIP REST")
-                    .font(AppTypography.button)
-                    .foregroundColor(AppColors.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(AppColors.surface)
-                    .cornerRadius(8)
-            }
+    private var averageSetTime: TimeInterval {
+        guard !viewModel.setTimes.isEmpty else { return 0 }
+        return viewModel.setTimes.reduce(0, +) / Double(viewModel.setTimes.count)
+    }
+}
 
-        case .complete:
-            Button(action: {
-                navigateToSummary = true
-            }) {
-                Text("VIEW SUMMARY")
-                    .font(AppTypography.button)
-                    .foregroundColor(AppColors.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(AppColors.accent)
-                    .cornerRadius(8)
-            }
+// MARK: - Complex reminder row (fileprivate per file)
+
+private struct ComplexReminderRow: View {
+    var body: some View {
+        HStack(spacing: 22) {
+            rep("2", "CLN")
+            rep("1", "PRS")
+            rep("3", "SQT")
+        }
+    }
+
+    private func rep(_ n: String, _ label: String) -> some View {
+        HStack(spacing: 6) {
+            Text(n)
+                .font(AppTypography.mono(16, weight: .bold))
+                .foregroundColor(AppColors.ink)
+            Text(label)
+                .font(.system(size: 12))
+                .kerning(0.5)
+                .foregroundColor(AppColors.ink3)
         }
     }
 }
 
+// MARK: - mm:ss helpers (zero-padded)
+
+private func mmss(_ seconds: Int) -> String {
+    let s = max(0, seconds)
+    return String(format: "%02d:%02d", s / 60, s % 60)
+}
+
+private func mmss(_ interval: TimeInterval) -> String {
+    mmss(Int(interval))
+}
+
 #Preview {
-    RoundsTimerView(config: .rounds(kettlebellType: .double, weight: 20, rounds: 5, restSeconds: 30))
+    NavigationStack {
+        RoundsTimerView(config: .rounds(kettlebellType: .double, weight: 16, rounds: 5, restSeconds: 60))
+    }
+    .modelContainer(for: WorkoutSession.self, inMemory: true)
 }

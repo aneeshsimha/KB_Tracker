@@ -12,11 +12,7 @@ import SwiftData
 struct KB_TrackerApp: App {
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                HomeView()
-            }
-            .preferredColorScheme(.dark)
-            .tint(AppColors.accent)
+            RootView()
         }
         .modelContainer(for: WorkoutSession.self)
     }
