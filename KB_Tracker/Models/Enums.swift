@@ -19,6 +19,12 @@ enum KBType: String, Codable {
     case double    // Double kettlebells (2x)
 }
 
+/// Which workout this session is: the ABC complex or the press ladder.
+enum WorkoutType: String, Codable {
+    case abc      // 2 cleans · 1 press · 3 front squats (EMOM/Rounds)
+    case press    // 2-3-5-10 press ladder
+}
+
 // MARK: - Timer Phase Enums
 
 /// Phase states for EMOM timer

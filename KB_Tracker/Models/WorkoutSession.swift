@@ -21,6 +21,9 @@ final class WorkoutSession {
     var setTimes: [TimeInterval] = []           // Completion time for each set
     var notes: String? = nil                    // User notes (failure, improvements)
     var isCompleted: Bool = false               // Was workout finished normally?
+    private var workoutTypeRaw: String = WorkoutType.abc.rawValue
+    var targetLadders: Int = 0          // press: target number of 2-3-5-10 ladders
+    var ladderReps: [Int] = []          // press: reps completed per ladder (full = 20)
 
     var mode: WorkoutMode {
         get { WorkoutMode(rawValue: modeRaw) ?? .emom }
@@ -30,6 +33,11 @@ final class WorkoutSession {
     var kettlebellType: KBType {
         get { KBType(rawValue: kettlebellTypeRaw) ?? .double }
         set { kettlebellTypeRaw = newValue.rawValue }
+    }
+
+    var workoutType: WorkoutType {
+        get { WorkoutType(rawValue: workoutTypeRaw) ?? .abc }
+        set { workoutTypeRaw = newValue.rawValue }
     }
 
     init() {}
@@ -79,4 +87,10 @@ extension WorkoutSession {
     var roundsDisplay: String {
         "\(completedRounds)/\(targetRounds)"
     }
+
+    // Press: total reps across all ladders (including a trailing partial).
+    var totalReps: Int { ladderReps.reduce(0, +) }
+
+    // Press: number of fully-completed ladders (20 reps each).
+    var completedLadders: Int { ladderReps.filter { $0 == 20 }.count }
 }
