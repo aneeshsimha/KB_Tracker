@@ -7,45 +7,33 @@ import Foundation
 
 /// A struct that encapsulates all workout configuration settings
 struct WorkoutConfig {
-    let mode: WorkoutMode
+    let workoutType: WorkoutType
+    let mode: WorkoutMode            // meaningful for .abc only
     let kettlebellType: KBType
     let weight: Int
-    let targetRounds: Int       // For EMOM: minutes, for Rounds: round count
-    let restDuration: Int?      // Rest between sets (rounds mode only)
+    let targetRounds: Int            // ABC EMOM: minutes; ABC Rounds: round count
+    let restDuration: Int?           // ABC Rounds only
+    let targetLadders: Int           // press only
 
-    // MARK: - Convenience Initializers
-
-    /// Create an EMOM workout configuration
     static func emom(kettlebellType: KBType, weight: Int, minutes: Int) -> WorkoutConfig {
-        WorkoutConfig(
-            mode: .emom,
-            kettlebellType: kettlebellType,
-            weight: weight,
-            targetRounds: minutes,
-            restDuration: nil
-        )
+        WorkoutConfig(workoutType: .abc, mode: .emom, kettlebellType: kettlebellType,
+                      weight: weight, targetRounds: minutes, restDuration: nil, targetLadders: 0)
     }
 
-    /// Create a Rounds workout configuration
     static func rounds(kettlebellType: KBType, weight: Int, rounds: Int, restSeconds: Int) -> WorkoutConfig {
-        WorkoutConfig(
-            mode: .rounds,
-            kettlebellType: kettlebellType,
-            weight: weight,
-            targetRounds: rounds,
-            restDuration: restSeconds
-        )
+        WorkoutConfig(workoutType: .abc, mode: .rounds, kettlebellType: kettlebellType,
+                      weight: weight, targetRounds: rounds, restDuration: restSeconds, targetLadders: 0)
     }
 
-    // MARK: - Computed Properties
+    static func press(kettlebellType: KBType, weight: Int, targetLadders: Int) -> WorkoutConfig {
+        WorkoutConfig(workoutType: .press, mode: .emom, kettlebellType: kettlebellType,
+                      weight: weight, targetRounds: 0, restDuration: nil, targetLadders: targetLadders)
+    }
 
-    /// Display string for weight (e.g., "2×20kg" or "20kg")
     var weightDisplay: String {
         switch kettlebellType {
-        case .single:
-            return "\(weight)kg"
-        case .double:
-            return "2×\(weight)kg"
+        case .single: return "\(weight)kg"
+        case .double: return "2×\(weight)kg"
         }
     }
 }

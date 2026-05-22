@@ -24,4 +24,17 @@ struct PressLadderModelTests {
         s.ladderReps = [20, 20, 15]
         #expect(s.completedLadders == 2)
     }
+
+    @Test func pressConfigBuilds() {
+        let c = WorkoutConfig.press(kettlebellType: .single, weight: 16, targetLadders: 5)
+        #expect(c.workoutType == .press)
+        #expect(c.targetLadders == 5)
+        #expect(c.weight == 16)
+        #expect(c.kettlebellType == .single)
+    }
+
+    @Test func emomConfigIsABC() {
+        let c = WorkoutConfig.emom(kettlebellType: .double, weight: 20, minutes: 20)
+        #expect(c.workoutType == .abc)
+    }
 }
