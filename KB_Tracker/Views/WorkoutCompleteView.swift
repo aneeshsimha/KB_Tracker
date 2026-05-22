@@ -44,9 +44,15 @@ struct WorkoutCompleteView: View {
                 topBar
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        hero
-                        statsGrid
-                        SetChart(setTimes: session.setTimes, mode: session.mode)
+                        if session.workoutType == .press {
+                            pressHero
+                            pressStatsGrid
+                            pressLadderChart
+                        } else {
+                            hero
+                            statsGrid
+                            SetChart(setTimes: session.setTimes, mode: session.mode)
+                        }
                         notesCard
                     }
                     .padding(.horizontal, 20)
@@ -135,6 +141,62 @@ struct WorkoutCompleteView: View {
 
         return (tLead + tCleans + tCleansLabel + tPresses + tPressesLabel + tSquats + tSquatsLabel)
             .font(AppTypography.bodyText)
+    }
+
+    // MARK: - Press hero
+
+    private var pressHero: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Eyebrow("✓ COMPLETE", color: AppColors.green)
+                .padding(.bottom, 8)
+            (
+                Text("\(session.totalReps) presses\n").foregroundColor(AppColors.ink)
+                + Text("at \(weightPhrase).").foregroundColor(AppColors.ink3)
+            )
+            .font(.system(size: 36, weight: .heavy))
+            .kerning(-0.8)
+            .lineSpacing(2)
+            .padding(.bottom, 10)
+
+            Text("\(session.completedLadders) ladders of 2·3·5·10.")
+                .font(AppTypography.bodyText)
+                .foregroundColor(AppColors.ink2)
+        }
+        .padding(.vertical, 6)
+    }
+
+    private var pressStatsGrid: some View {
+        let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+        let avgLadder = session.completedLadders > 0
+            ? session.totalDuration / Double(session.completedLadders) : 0
+        return LazyVGrid(columns: columns, spacing: 10) {
+            StatTile(label: "TOTAL REPS", value: "\(session.totalReps)")
+            StatTile(label: "LADDERS", value: "\(session.completedLadders)/\(session.targetLadders)")
+            StatTile(label: "TIME", value: mmss(session.totalDuration))
+            StatTile(label: "AVG · LADDER", value: mmss(avgLadder))
+        }
+    }
+
+    private var pressLadderChart: some View {
+        KBCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Eyebrow("LADDER BREAKDOWN")
+                    Spacer()
+                    Eyebrow("\(session.ladderReps.count) LDR", color: AppColors.ink4)
+                }
+                HStack(alignment: .bottom, spacing: 6) {
+                    ForEach(Array(session.ladderReps.enumerated()), id: \.offset) { _, reps in
+                        let h = max(4, CGFloat(reps) / 20.0 * 110)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(reps == 20 ? AppColors.ink : AppColors.ink3)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: h)
+                    }
+                }
+                .frame(height: 110, alignment: .bottom)
+            }
+        }
     }
 
     // MARK: - Stats grid
