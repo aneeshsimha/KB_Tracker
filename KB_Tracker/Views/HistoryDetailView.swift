@@ -43,10 +43,16 @@ struct HistoryDetailView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        hero
-                        statsGrid
-                        SetChart(setTimes: session.setTimes, mode: session.mode)
-                        eachSetCard
+                        if session.workoutType == .press {
+                            pressHero
+                            pressStatsGrid
+                            pressLadderGrid
+                        } else {
+                            hero
+                            statsGrid
+                            SetChart(setTimes: session.setTimes, mode: session.mode)
+                            eachSetCard
+                        }
                         notesCard
                     }
                     .padding(.horizontal, 20)
@@ -133,6 +139,69 @@ struct HistoryDetailView: View {
                 LazyVGrid(columns: columns, spacing: 6) {
                     ForEach(Array(times.enumerated()), id: \.offset) { index, t in
                         SetCell(index: index, time: t, isEMOM: isEMOM)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Press hero
+
+    private var pressHero: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(session.totalReps)")
+                .font(AppTypography.numeralLg)
+                .kerning(-1.5)
+                .foregroundColor(AppColors.ink)
+
+            let eyebrowLabel = Text("PRESS · REPS")
+                .foregroundColor(AppColors.ink3)
+            let eyebrowWeight = Text(" · \(weightPhrase)")
+                .foregroundColor(AppColors.ink4)
+            (eyebrowLabel + eyebrowWeight)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .kerning(11 * 0.18)
+        }
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Press stats grid
+
+    private var pressStatsGrid: some View {
+        let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+        let avgLadder = session.totalDuration / Double(max(1, session.completedLadders))
+        return LazyVGrid(columns: columns, spacing: 8) {
+            StatTile(label: "TOTAL REPS", value: "\(session.totalReps)")
+            StatTile(label: "LADDERS", value: "\(session.completedLadders)/\(session.targetLadders)")
+            StatTile(label: "TIME", value: mmssDetail(session.totalDuration))
+            StatTile(label: "AVG · LADDER", value: mmssDetail(avgLadder))
+        }
+    }
+
+    // MARK: - Press ladder grid
+
+    private var pressLadderGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+        return KBCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Eyebrow("EACH LADDER")
+                LazyVGrid(columns: columns, spacing: 6) {
+                    ForEach(Array(session.ladderReps.enumerated()), id: \.offset) { i, reps in
+                        VStack(spacing: 2) {
+                            Eyebrow(String(format: "L%02d", i + 1), size: 9)
+                            Text("\(reps)")
+                                .font(AppTypography.mono(13))
+                                .foregroundColor(AppColors.ink)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 8)
+                        .background(AppColors.surface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(AppColors.hairline, lineWidth: 1)
+                        )
                     }
                 }
             }

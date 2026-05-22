@@ -201,39 +201,77 @@ fileprivate struct SessionRow: View {
             }
 
             // main
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(session.mode == .emom ? "EMOM" : "Rounds")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.ink)
-                    Text(weightPhrase)
-                        .font(AppTypography.mono(13, weight: .semibold))
-                        .foregroundColor(AppColors.ink3)
+            if session.workoutType == .press {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("Press")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(AppColors.ink)
+                        Text(session.weightDisplay)
+                            .font(AppTypography.mono(13, weight: .semibold))
+                            .foregroundColor(AppColors.ink3)
+                    }
+                    HStack(spacing: 0) {
+                        Text("\(session.totalReps)")
+                            .font(AppTypography.mono(12.5, weight: .semibold))
+                            .foregroundColor(AppColors.ink2)
+                        Text(" reps")
+                            .font(.system(size: 12.5))
+                            .foregroundColor(AppColors.ink4)
+                        Text("  ·  ")
+                            .font(.system(size: 12.5))
+                            .foregroundColor(AppColors.ink4)
+                        Text("\(session.completedLadders) ladders")
+                            .font(AppTypography.mono(12.5, weight: .regular))
+                            .foregroundColor(AppColors.ink2)
+                    }
                 }
-                HStack(spacing: 0) {
-                    Text("\(session.completedRounds)")
-                        .font(AppTypography.mono(12.5, weight: .semibold))
-                        .foregroundColor(AppColors.ink2)
-                    Text("/\(session.targetRounds)")
-                        .font(.system(size: 12.5))
-                        .foregroundColor(AppColors.ink4)
-                    Text("  ·  ")
-                        .font(.system(size: 12.5))
-                        .foregroundColor(AppColors.ink4)
-                    Text(mmssHistory(session.totalDuration))
-                        .font(AppTypography.mono(12.5, weight: .regular))
-                        .foregroundColor(AppColors.ink2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(session.mode == .emom ? "EMOM" : "Rounds")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(AppColors.ink)
+                        Text(weightPhrase)
+                            .font(AppTypography.mono(13, weight: .semibold))
+                            .foregroundColor(AppColors.ink3)
+                    }
+                    HStack(spacing: 0) {
+                        Text("\(session.completedRounds)")
+                            .font(AppTypography.mono(12.5, weight: .semibold))
+                            .foregroundColor(AppColors.ink2)
+                        Text("/\(session.targetRounds)")
+                            .font(.system(size: 12.5))
+                            .foregroundColor(AppColors.ink4)
+                        Text("  ·  ")
+                            .font(.system(size: 12.5))
+                            .foregroundColor(AppColors.ink4)
+                        Text(mmssHistory(session.totalDuration))
+                            .font(AppTypography.mono(12.5, weight: .regular))
+                            .foregroundColor(AppColors.ink2)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             // micro spark
-            if !session.setTimes.isEmpty {
-                SparkBars(times: session.setTimes,
-                          mode: session.mode,
-                          height: 20,
-                          limit: 20)
-                    .frame(width: 60)
+            if session.workoutType == .press {
+                if !session.ladderReps.isEmpty {
+                    SparkBars(times: session.ladderReps.map { TimeInterval($0) },
+                              mode: .rounds,
+                              height: 20,
+                              limit: 20)
+                        .frame(width: 60)
+                }
+            } else {
+                if !session.setTimes.isEmpty {
+                    SparkBars(times: session.setTimes,
+                              mode: session.mode,
+                              height: 20,
+                              limit: 20)
+                        .frame(width: 60)
+                }
             }
 
             Image(systemName: "chevron.right")
