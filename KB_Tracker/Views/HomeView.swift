@@ -182,8 +182,8 @@ struct HomeView: View {
                 eyebrow: "LADDERS",
                 value: "\(targetLadders)",
                 unit: "× 2·3·5·10",
-                onMinus: { targetLadders = max(1, targetLadders - 1) },
-                onPlus: { targetLadders = min(10, targetLadders + 1) }
+                onMinus: { targetLadders = max(WorkoutParameters.laddersMin, targetLadders - 1) },
+                onPlus: { targetLadders = min(WorkoutParameters.laddersMax, targetLadders + 1) }
             ) {
                 HStack {
                     Text("Total reps")
@@ -369,19 +369,19 @@ struct HomeView: View {
     // MARK: - Steppers
 
     private func stepWeight(_ d: Int) {
-        weight = max(12, min(24, weight + d * 2))
+        weight = max(WorkoutParameters.weightMin, min(WorkoutParameters.weightMax, weight + d * WorkoutParameters.weightStep))
     }
 
     private func stepDuration(_ d: Int) {
         if mode == .emom {
-            targetMinutes = max(10, min(30, targetMinutes + d))
+            targetMinutes = max(WorkoutParameters.emomMinutesMin, min(WorkoutParameters.emomMinutesMax, targetMinutes + d))
         } else {
-            targetRounds = max(5, min(20, targetRounds + d))
+            targetRounds = max(WorkoutParameters.roundsMin, min(WorkoutParameters.roundsMax, targetRounds + d))
         }
     }
 
     private func stepRest(_ d: Int) {
-        restDuration = max(30, min(120, restDuration + d * 15))
+        restDuration = max(WorkoutParameters.restMin, min(WorkoutParameters.restMax, restDuration + d * WorkoutParameters.restStep))
     }
 
     // MARK: - Prefill logic

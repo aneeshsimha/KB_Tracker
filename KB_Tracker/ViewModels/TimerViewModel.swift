@@ -20,7 +20,7 @@ class TimerViewModel: ObservableObject {
     // MARK: - EMOM-specific State
     @Published private(set) var emomPhase: TimerPhase = .getReady
     @Published private(set) var secondsIntoMinute: Double = 0
-    @Published private(set) var getReadyCountdown: Int = 5
+    @Published private(set) var getReadyCountdown: Int = WorkoutParameters.getReadySeconds
 
     // MARK: - Rounds-specific State
     @Published private(set) var roundsPhase: RoundsPhase = .getReady
@@ -111,17 +111,17 @@ class TimerViewModel: ObservableObject {
     }
 
     private func handleEMOMGetReady() {
-        getReadyCountdown = 5 - Int(totalElapsed)
+        getReadyCountdown = WorkoutParameters.getReadySeconds - Int(totalElapsed)
 
         let currentSecond = Int(totalElapsed)
-        if currentSecond != lastBeepSecond && currentSecond < 5 {
+        if currentSecond != lastBeepSecond && currentSecond < WorkoutParameters.getReadySeconds {
             AudioService.shared.playCountdownBeep()
             lastBeepSecond = currentSecond
         }
 
         totalElapsed += 0.1
 
-        if totalElapsed >= 5 {
+        if totalElapsed >= Double(WorkoutParameters.getReadySeconds) {
             emomPhase = .active
             totalElapsed = 0
             secondsIntoMinute = 0
@@ -197,12 +197,12 @@ class TimerViewModel: ObservableObject {
         guard let start = getReadyStartTime else { return }
 
         let elapsed = Date().timeIntervalSince(start)
-        let newCountdown = max(0, 5 - Int(elapsed))
+        let newCountdown = max(0, WorkoutParameters.getReadySeconds - Int(elapsed))
 
         if newCountdown != getReadyCountdown {
             getReadyCountdown = newCountdown
 
-            if getReadyCountdown > 0 && getReadyCountdown <= 5 {
+            if getReadyCountdown > 0 && getReadyCountdown <= WorkoutParameters.getReadySeconds {
                 AudioService.shared.playCountdownBeep()
             }
 
