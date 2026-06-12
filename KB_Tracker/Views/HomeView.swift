@@ -18,6 +18,9 @@ struct HomeView: View {
     @State private var targetRounds: Int = 15        // Rounds mode
     @State private var restDuration: Int = 60        // Rounds mode
 
+    @AppStorage("kb_pref_kbType") private var prefKBType: String = KBType.double.rawValue
+    @AppStorage("kb_pref_weight") private var prefWeight: Int = 20
+
     @State private var route: HomeRoute?
     @State private var workoutType: WorkoutType = .abc
     @State private var targetLadders: Int = 5        // press
@@ -387,11 +390,16 @@ struct HomeView: View {
     // MARK: - Prefill logic
 
     private func prefillFromLastSession() {
+        let setup = HomeSetupLogic.initialKBSetup(
+            lastSession: lastSession,
+            prefKBType: prefKBType,
+            prefWeight: prefWeight
+        )
+        kettlebellType = setup.kbType
+        weight = setup.weight
+
         guard let last = lastSession else { return }
         mode = last.mode
-        kettlebellType = last.kettlebellType
-        weight = last.weight
-
         if last.mode == .emom {
             targetMinutes = last.targetRounds
         } else {
