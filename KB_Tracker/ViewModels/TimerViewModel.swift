@@ -32,6 +32,7 @@ class TimerViewModel: ObservableObject {
     @Published private(set) var partialSession: WorkoutSession? = nil
 
     // MARK: - Private State
+    private let audio: AudioCueing
     private var setStartTime: Date? = nil
     private var getReadyStartTime: Date? = nil
     private var restStartTime: Date? = nil
@@ -62,8 +63,9 @@ class TimerViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(config: WorkoutConfig) {
+    init(config: WorkoutConfig, audio: AudioCueing = AudioService.shared) {
         self.config = config
+        self.audio = audio
     }
 
     // MARK: - Timer Control
@@ -115,7 +117,7 @@ class TimerViewModel: ObservableObject {
 
         let currentSecond = Int(totalElapsed)
         if currentSecond != lastBeepSecond && currentSecond < WorkoutParameters.getReadySeconds {
-            AudioService.shared.playCountdownBeep()
+            audio.playCountdownBeep()
             lastBeepSecond = currentSecond
         }
 
@@ -126,7 +128,7 @@ class TimerViewModel: ObservableObject {
             totalElapsed = 0
             secondsIntoMinute = 0
             startNewEMOMRound()
-            AudioService.shared.playGoBeep()
+            audio.playGoBeep()
         }
     }
 
@@ -139,7 +141,7 @@ class TimerViewModel: ObservableObject {
         if secondsRemaining <= 5 && secondsRemaining > 0 {
             let beepSecond = 60 - secondsRemaining
             if beepSecond != lastBeepSecond {
-                AudioService.shared.playCountdownBeep()
+                audio.playCountdownBeep()
                 lastBeepSecond = beepSecond
             }
         }
@@ -151,7 +153,7 @@ class TimerViewModel: ObservableObject {
 
             if currentRound < config.targetRounds {
                 startNewEMOMRound()
-                AudioService.shared.playGoBeep()
+                audio.playGoBeep()
             } else {
                 completeWorkout()
             }
@@ -203,11 +205,11 @@ class TimerViewModel: ObservableObject {
             getReadyCountdown = newCountdown
 
             if getReadyCountdown > 0 && getReadyCountdown <= WorkoutParameters.getReadySeconds {
-                AudioService.shared.playCountdownBeep()
+                audio.playCountdownBeep()
             }
 
             if getReadyCountdown == 0 {
-                AudioService.shared.playGoBeep()
+                audio.playGoBeep()
                 roundsPhase = .working
                 currentRound = 1
                 setStartTime = Date()
@@ -235,7 +237,7 @@ class TimerViewModel: ObservableObject {
             restCountdown = newCountdown
 
             if restCountdown > 0 && restCountdown <= 5 && restCountdown != lastBeepSecond {
-                AudioService.shared.playCountdownBeep()
+                audio.playCountdownBeep()
                 lastBeepSecond = restCountdown
             }
 
@@ -253,7 +255,7 @@ class TimerViewModel: ObservableObject {
 
         if currentRound >= config.targetRounds {
             roundsPhase = .complete
-            AudioService.shared.playCompletionSound()
+            audio.playCompletionSound()
             stop()
             createCompletedSession()
         } else {
@@ -269,7 +271,7 @@ class TimerViewModel: ObservableObject {
     }
 
     private func transitionToNextRound() {
-        AudioService.shared.playGoBeep()
+        audio.playGoBeep()
         currentRound += 1
         roundsPhase = .working
         setStartTime = Date()
@@ -285,7 +287,7 @@ class TimerViewModel: ObservableObject {
         } else {
             roundsPhase = .complete
         }
-        AudioService.shared.playCompletionSound()
+        audio.playCompletionSound()
         stop()
         createCompletedSession()
     }

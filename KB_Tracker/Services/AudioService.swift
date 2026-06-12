@@ -6,7 +6,13 @@
 import AVFoundation
 import AudioToolbox
 
-class AudioService {
+protocol AudioCueing {
+    func playCountdownBeep()
+    func playGoBeep()
+    func playCompletionSound()
+}
+
+class AudioService: AudioCueing {
     static let shared = AudioService()
 
     private init() {
