@@ -120,7 +120,7 @@ struct RoundsTimerView: View {
                     .font(AppTypography.mono(18, weight: .semibold))
                 + Text("  ·  ")
                     .foregroundColor(AppColors.ink4)
-                + Text("\(config.targetRounds) rounds · \(mmss(config.restDuration ?? 0)) rest")
+                + Text("\(config.targetRounds) rounds · \((config.restDuration ?? 0).formattedMinutesSecondsPadded) rest")
                     .font(.system(size: 14))
             )
             .foregroundColor(AppColors.ink2)
@@ -130,7 +130,7 @@ struct RoundsTimerView: View {
 
     private var workContent: some View {
         VStack(spacing: 0) {
-            Text(mmss(viewModel.currentSetElapsed))
+            Text(viewModel.currentSetElapsed.formattedMinutesSecondsPadded)
                 .font(AppTypography.timerXL)
                 .foregroundColor(AppColors.ink)
                 .monospacedDigit()
@@ -150,12 +150,12 @@ struct RoundsTimerView: View {
             Eyebrow("SET LOGGED", color: AppColors.ink3)
                 .padding(.bottom, 6)
 
-            Text(mmss(viewModel.setTimes.last ?? 0))
+            Text((viewModel.setTimes.last ?? 0).formattedMinutesSecondsPadded)
                 .font(AppTypography.mono(28, weight: .semibold))
                 .foregroundColor(AppColors.ink2)
                 .padding(.bottom, 40)
 
-            Text(mmss(viewModel.restCountdown))
+            Text(viewModel.restCountdown.formattedMinutesSecondsPadded)
                 .font(AppTypography.timerLg)
                 .foregroundColor(AppColors.ink)
                 .monospacedDigit()
@@ -229,7 +229,7 @@ struct RoundsTimerView: View {
     private func lastAvg(label: String, value: TimeInterval) -> some View {
         HStack(spacing: 6) {
             Text("\(label):")
-            Text(mmss(value))
+            Text(value.formattedMinutesSecondsPadded)
                 .font(AppTypography.mono(12, weight: .semibold))
                 .foregroundColor(AppColors.ink2)
         }
@@ -263,17 +263,6 @@ private struct ComplexReminderRow: View {
                 .foregroundColor(AppColors.ink3)
         }
     }
-}
-
-// MARK: - mm:ss helpers (zero-padded)
-
-private func mmss(_ seconds: Int) -> String {
-    let s = max(0, seconds)
-    return String(format: "%02d:%02d", s / 60, s % 60)
-}
-
-private func mmss(_ interval: TimeInterval) -> String {
-    mmss(Int(interval))
 }
 
 #Preview {

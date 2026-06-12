@@ -33,3 +33,13 @@ extension TimeInterval {
         }
     }
 }
+
+// MARK: - Int Formatting
+
+extension Int {
+    /// Format as mm:ss with leading zero on minutes, clamping negative values to zero.
+    var formattedMinutesSecondsPadded: String {
+        let clamped = self < 0 ? 0 : self
+        return TimeInterval(clamped).formattedMinutesSecondsPadded
+    }
+}

@@ -247,7 +247,7 @@ fileprivate struct SessionRow: View {
                         Text("  ·  ")
                             .font(.system(size: 12.5))
                             .foregroundColor(AppColors.ink4)
-                        Text(mmssHistory(session.totalDuration))
+                        Text(session.totalDuration.formattedMinutesSecondsPadded)
                             .font(AppTypography.mono(12.5, weight: .regular))
                             .foregroundColor(AppColors.ink2)
                     }
@@ -328,12 +328,6 @@ fileprivate func weekStripBuckets(_ sessions: [WorkoutSession]) -> [Int] {
         }
     }
     return buckets
-}
-
-/// Seconds → zero-padded "MM:SS".
-fileprivate func mmssHistory(_ sec: TimeInterval) -> String {
-    let s = max(0, Int(sec))
-    return String(format: "%02d:%02d", s / 60, s % 60)
 }
 
 fileprivate func dayOfMonth(_ date: Date) -> String {

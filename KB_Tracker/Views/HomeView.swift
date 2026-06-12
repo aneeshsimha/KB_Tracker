@@ -239,7 +239,7 @@ struct HomeView: View {
                         .font(.system(size: 12))
                         .foregroundColor(AppColors.ink3)
                     Spacer()
-                    Text(mmss(targetMinutes * 60))
+                    Text((targetMinutes * 60).formattedMinutesSecondsPadded)
                         .font(AppTypography.mono(12, weight: .regular))
                         .foregroundColor(AppColors.ink3)
                 }
@@ -265,7 +265,7 @@ struct HomeView: View {
                     Spacer()
                     HStack(spacing: 10) {
                         StepperButton(icon: .minus) { stepRest(-1) }
-                        Text(mmss(restDuration))
+                        Text(restDuration.formattedMinutesSecondsPadded)
                             .font(AppTypography.mono(17, weight: .bold))
                             .foregroundColor(AppColors.ink)
                             .frame(minWidth: 56)
@@ -322,7 +322,7 @@ struct HomeView: View {
                         Text("\(session.mode == .emom ? "EMOM" : "Rounds") · \(session.weightDisplay)")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(AppColors.ink)
-                        Text("\(mmss(Int(session.totalDuration))) total")
+                        Text("\(Int(session.totalDuration).formattedMinutesSecondsPadded) total")
                             .font(.system(size: 13))
                             .foregroundColor(AppColors.ink3)
                     }
@@ -413,11 +413,6 @@ fileprivate enum HomeRoute: Hashable, Identifiable {
 }
 
 // MARK: - Formatting helpers
-
-/// Seconds → zero-padded "MM:SS" (matches home.jsx fmt.mmss).
-fileprivate func mmss(_ seconds: Int) -> String {
-    TimeInterval(max(0, seconds)).formattedMinutesSecondsPadded
-}
 
 /// Relative day string (Today / Yesterday / N days ago …), from home.jsx fmt.relativeDay.
 fileprivate func relativeDay(_ date: Date) -> String {

@@ -118,13 +118,13 @@ struct HistoryDetailView: View {
     private var statsGrid: some View {
         let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
         return LazyVGrid(columns: columns, spacing: 8) {
-            StatTile(label: "TOTAL", value: mmssDetail(session.totalDuration))
-            StatTile(label: "AVG SET", value: mmssDetail(avg))
-            StatTile(label: "FASTEST", value: mmssDetail(fastest))
+            StatTile(label: "TOTAL", value: session.totalDuration.formattedMinutesSecondsPadded)
+            StatTile(label: "AVG SET", value: avg.formattedMinutesSecondsPadded)
+            StatTile(label: "FASTEST", value: fastest.formattedMinutesSecondsPadded)
             if isEMOM {
                 StatTile(label: "OVERTIME", value: "\(overtimeCount)", warn: overtimeCount > 0)
             } else {
-                StatTile(label: "SLOWEST", value: mmssDetail(slowest))
+                StatTile(label: "SLOWEST", value: slowest.formattedMinutesSecondsPadded)
             }
         }
     }
@@ -173,8 +173,8 @@ struct HistoryDetailView: View {
         return LazyVGrid(columns: columns, spacing: 8) {
             StatTile(label: "TOTAL REPS", value: "\(session.totalReps)")
             StatTile(label: "LADDERS", value: "\(session.completedLadders)/\(session.targetLadders)")
-            StatTile(label: "TIME", value: mmssDetail(session.totalDuration))
-            StatTile(label: "AVG · LADDER", value: mmssDetail(avgLadder))
+            StatTile(label: "TIME", value: session.totalDuration.formattedMinutesSecondsPadded)
+            StatTile(label: "AVG · LADDER", value: avgLadder.formattedMinutesSecondsPadded)
         }
     }
 
@@ -248,7 +248,7 @@ fileprivate struct SetCell: View {
     var body: some View {
         VStack(spacing: 2) {
             Eyebrow("\(isEMOM ? "M" : "R")\(String(format: "%02d", index + 1))", size: 9)
-            Text(mmssDetail(time))
+            Text(time.formattedMinutesSecondsPadded)
                 .font(AppTypography.mono(13))
                 .foregroundColor(over ? AppColors.red : AppColors.ink)
         }
@@ -265,12 +265,6 @@ fileprivate struct SetCell: View {
 }
 
 // MARK: - Formatting helpers
-
-/// Seconds → zero-padded "MM:SS".
-fileprivate func mmssDetail(_ sec: TimeInterval) -> String {
-    let s = max(0, Int(sec))
-    return String(format: "%02d:%02d", s / 60, s % 60)
-}
 
 /// Full date "EEE, MMM d" (e.g. "Fri, May 22"), used uppercased in the header.
 fileprivate func fullDate(_ date: Date) -> String {

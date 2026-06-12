@@ -151,9 +151,9 @@ struct EMOMTimerView: View {
 
     private var timerText: String {
         if isOvertime {
-            return "+" + mmss(abs(viewModel.countdownSeconds))
+            return "+" + abs(viewModel.countdownSeconds).formattedMinutesSecondsPadded
         }
-        return mmss(viewModel.countdownSeconds)
+        return viewModel.countdownSeconds.formattedMinutesSecondsPadded
     }
 
     // MARK: - Footer (Set Done + last/avg)
@@ -193,7 +193,7 @@ struct EMOMTimerView: View {
     private func lastAvg(label: String, value: TimeInterval) -> some View {
         HStack(spacing: 6) {
             Text("\(label):")
-            Text(mmss(value))
+            Text(value.formattedMinutesSecondsPadded)
                 .font(AppTypography.mono(12, weight: .semibold))
                 .foregroundColor(AppColors.ink2)
         }
@@ -227,17 +227,6 @@ private struct ComplexReminderRow: View {
                 .foregroundColor(AppColors.ink3)
         }
     }
-}
-
-// MARK: - mm:ss helpers (zero-padded)
-
-private func mmss(_ seconds: Int) -> String {
-    let s = max(0, seconds)
-    return String(format: "%02d:%02d", s / 60, s % 60)
-}
-
-private func mmss(_ interval: TimeInterval) -> String {
-    mmss(Int(interval))
 }
 
 #Preview {

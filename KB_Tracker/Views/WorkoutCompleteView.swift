@@ -172,8 +172,8 @@ struct WorkoutCompleteView: View {
         return LazyVGrid(columns: columns, spacing: 10) {
             StatTile(label: "TOTAL REPS", value: "\(session.totalReps)")
             StatTile(label: "LADDERS", value: "\(session.completedLadders)/\(session.targetLadders)")
-            StatTile(label: "TIME", value: mmss(session.totalDuration))
-            StatTile(label: "AVG · LADDER", value: mmss(avgLadder))
+            StatTile(label: "TIME", value: session.totalDuration.formattedMinutesSecondsPadded)
+            StatTile(label: "AVG · LADDER", value: avgLadder.formattedMinutesSecondsPadded)
         }
     }
 
@@ -204,13 +204,13 @@ struct WorkoutCompleteView: View {
     private var statsGrid: some View {
         let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
         return LazyVGrid(columns: columns, spacing: 10) {
-            StatTile(label: "TOTAL", value: mmss(session.totalDuration))
-            StatTile(label: "AVG SET", value: mmss(session.averageSetTime ?? 0))
-            StatTile(label: "FASTEST", value: mmss(fastest))
+            StatTile(label: "TOTAL", value: session.totalDuration.formattedMinutesSecondsPadded)
+            StatTile(label: "AVG SET", value: (session.averageSetTime ?? 0).formattedMinutesSecondsPadded)
+            StatTile(label: "FASTEST", value: fastest.formattedMinutesSecondsPadded)
             if isEMOM {
                 StatTile(label: "OVERTIME", value: "\(overtimeCount)", warn: overtimeCount > 0)
             } else {
-                StatTile(label: "SLOWEST", value: mmss(slowest))
+                StatTile(label: "SLOWEST", value: slowest.formattedMinutesSecondsPadded)
             }
         }
     }
@@ -246,14 +246,6 @@ struct WorkoutCompleteView: View {
             onSaveComplete?()
         }
     }
-}
-
-// MARK: - Helpers
-
-/// Seconds → zero-padded "MM:SS" (matches fmt.mmss in the prototype).
-private func mmss(_ sec: TimeInterval) -> String {
-    let s = max(0, Int(sec))
-    return String(format: "%02d:%02d", s / 60, s % 60)
 }
 
 private extension Date {
