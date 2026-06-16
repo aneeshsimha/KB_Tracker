@@ -94,6 +94,11 @@ struct WorkoutConfigTests {
         #expect(c.targetLadders == 3)
     }
 
+    @Test func pressFactoryWorkoutTypeIsPress() {
+        let c = WorkoutConfig.press(kettlebellType: .double, weight: 20, targetLadders: 3)
+        #expect(c.workoutType == .press)
+    }
+
     // MARK: - weightDisplay (WorkoutConfig)
 
     @Test func configWeightDisplaySingle() {
