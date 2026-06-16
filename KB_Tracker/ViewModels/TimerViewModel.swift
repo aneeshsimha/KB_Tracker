@@ -33,6 +33,7 @@ class TimerViewModel: ObservableObject {
 
     // MARK: - Private State
     private let audio: AudioCueing
+    private let now: () -> Date
     private var setStartTime: Date? = nil
     private var getReadyStartTime: Date? = nil
     private var restStartTime: Date? = nil
@@ -63,15 +64,16 @@ class TimerViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(config: WorkoutConfig, audio: AudioCueing = AudioService.shared) {
+    init(config: WorkoutConfig, audio: AudioCueing = AudioService.shared, now: @escaping () -> Date = Date.init) {
         self.config = config
         self.audio = audio
+        self.now = now
     }
 
     // MARK: - Timer Control
 
     func start() {
-        getReadyStartTime = Date()
+        getReadyStartTime = now()
         startTimer()
     }
 
@@ -84,13 +86,13 @@ class TimerViewModel: ObservableObject {
         timer = Timer.publish(every: 0.1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                self?.handleTimerTick()
+                self?.tick()
             }
     }
 
     // MARK: - Timer Logic
 
-    private func handleTimerTick() {
+    func tick() {
         switch config.mode {
         case .emom:
             handleEMOMTick()
@@ -163,13 +165,13 @@ class TimerViewModel: ObservableObject {
     private func startNewEMOMRound() {
         currentRound += 1
         isSetInProgress = true
-        setStartTime = Date()
+        setStartTime = now()
     }
 
     func handleEMOMSetDone() {
         guard isSetInProgress, let startTime = setStartTime else { return }
 
-        let setDuration = Date().timeIntervalSince(startTime)
+        let setDuration = now().timeIntervalSince(startTime)
         setTimes.append(setDuration)
 
         isSetInProgress = false
@@ -198,7 +200,7 @@ class TimerViewModel: ObservableObject {
     private func handleRoundsGetReady() {
         guard let start = getReadyStartTime else { return }
 
-        let elapsed = Date().timeIntervalSince(start)
+        let elapsed = now().timeIntervalSince(start)
         let newCountdown = max(0, WorkoutParameters.getReadySeconds - Int(elapsed))
 
         if newCountdown != getReadyCountdown {
@@ -212,7 +214,7 @@ class TimerViewModel: ObservableObject {
                 audio.playGoBeep()
                 roundsPhase = .working
                 currentRound = 1
-                setStartTime = Date()
+                setStartTime = now()
             }
         }
     }
@@ -220,7 +222,7 @@ class TimerViewModel: ObservableObject {
     private func handleRoundsWorking() {
         totalElapsed += 0.1
         if let start = setStartTime {
-            currentSetElapsed = Date().timeIntervalSince(start)
+            currentSetElapsed = now().timeIntervalSince(start)
         }
     }
 
@@ -229,7 +231,7 @@ class TimerViewModel: ObservableObject {
 
         guard let start = restStartTime else { return }
 
-        let elapsed = Date().timeIntervalSince(start)
+        let elapsed = now().timeIntervalSince(start)
         let restDuration = config.restDuration ?? 60
         let newCountdown = max(0, restDuration - Int(elapsed))
 
@@ -250,7 +252,7 @@ class TimerViewModel: ObservableObject {
     func handleRoundsSetDone() {
         guard roundsPhase == .working, let start = setStartTime else { return }
 
-        let setTime = Date().timeIntervalSince(start)
+        let setTime = now().timeIntervalSince(start)
         setTimes.append(setTime)
 
         if currentRound >= config.targetRounds {
@@ -261,7 +263,7 @@ class TimerViewModel: ObservableObject {
         } else {
             roundsPhase = .resting
             restCountdown = config.restDuration ?? 60
-            restStartTime = Date()
+            restStartTime = now()
             lastBeepSecond = -1
         }
     }
@@ -274,7 +276,7 @@ class TimerViewModel: ObservableObject {
         audio.playGoBeep()
         currentRound += 1
         roundsPhase = .working
-        setStartTime = Date()
+        setStartTime = now()
         currentSetElapsed = 0
         lastBeepSecond = -1
     }
