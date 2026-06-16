@@ -155,6 +155,7 @@ final class RoundsTimerViewModel: ObservableObject {
     }
 
     func skipRest() {
+        guard roundsPhase == .resting else { return }
         transitionToNextRound()
     }
 
