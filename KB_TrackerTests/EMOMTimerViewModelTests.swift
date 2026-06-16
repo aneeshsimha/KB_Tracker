@@ -58,10 +58,9 @@ struct EMOMTimerViewModelTests {
 
         let epoch = Date(timeIntervalSince1970: 1_000_000)
         // Timestamps returned in sequence:
-        //   call 0: start() → getReadyStartTime (unused in EMOM path)
-        //   call 1: startNewEMOMRound() inside transition → setStartTime = epoch+0
-        //   call 2: setDone() → now() = epoch+30 → setDuration = 30
-        let times: [TimeInterval] = [0, 0, 30]
+        //   call 0: startNewEMOMRound() inside transition → setStartTime = epoch+0
+        //   call 1: setDone() → now() = epoch+30 → setDuration = 30
+        let times: [TimeInterval] = [0, 30]
         var callIdx = 0
         let fakeNow: () -> Date = {
             let t = times[min(callIdx, times.count - 1)]
@@ -71,9 +70,9 @@ struct EMOMTimerViewModelTests {
 
         let vm = EMOMTimerViewModel(config: config, audio: spy, now: fakeNow)
         vm.start()
-        driveEMOMGetReadyToActive(vm)  // triggers startNewEMOMRound() → call 1
+        driveEMOMGetReadyToActive(vm)  // triggers startNewEMOMRound() → call 0
 
-        vm.setDone()  // → call 2
+        vm.setDone()  // → call 1
 
         #expect(vm.setTimes.count == 1)
         #expect(vm.setTimes[0] == 30.0)

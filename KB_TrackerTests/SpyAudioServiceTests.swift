@@ -20,10 +20,10 @@ struct SpyAudioServiceTests {
         #expect(spy.cues == ["go", "countdown", "completion"])
     }
 
-    @Test func timerViewModelAcceptsInjectedAudio() {
+    @Test func emomTimerViewModelAcceptsInjectedAudio() {
         let spy = SpyAudioService()
         let config = WorkoutConfig.emom(kettlebellType: .single, weight: 16, minutes: 20)
-        let _ = TimerViewModel(config: config, audio: spy)
+        let _ = EMOMTimerViewModel(config: config, audio: spy)
         // Just verifies the init compiles and doesn't crash — deeper behavior tested in characterization suite
         #expect(spy.cues.isEmpty)
     }
