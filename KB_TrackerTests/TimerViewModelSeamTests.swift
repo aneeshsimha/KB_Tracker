@@ -13,11 +13,10 @@ struct TimerViewModelSeamTests {
 
     // MARK: - Smoke Tests
 
-    /// tick() drives EMOM getReady phase: totalElapsed accumulates without real time passing.
-    @Test func emomTickAccumulatesElapsed() {
+    /// EMOM getReady accumulation — not a seam test (now() unused in this path).
+    @Test func emomGetReadyAccumulatesElapsed() {
         let spy = SpyAudioService()
         let config = WorkoutConfig.emom(kettlebellType: .single, weight: 16, minutes: 5)
-        // now() is not consulted during EMOM getReady (uses totalElapsed accumulation)
         let vm = TimerViewModel(config: config, audio: spy, now: Date.init)
 
         vm.start()

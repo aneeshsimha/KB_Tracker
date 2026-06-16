@@ -92,6 +92,7 @@ class TimerViewModel: ObservableObject {
 
     // MARK: - Timer Logic
 
+    // internal for testability — production callers go through startTimer()/Combine
     func tick() {
         switch config.mode {
         case .emom:
