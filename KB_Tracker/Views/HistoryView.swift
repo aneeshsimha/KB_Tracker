@@ -241,7 +241,7 @@ fileprivate struct SessionRow: View {
                         Text("\(session.completedRounds)")
                             .font(AppTypography.mono(12.5, weight: .semibold))
                             .foregroundColor(AppColors.ink2)
-                        Text("/\(session.targetRounds)")
+                        Text("/\(session.mode == .emom ? session.targetMinutes : session.targetRounds)")
                             .font(.system(size: 12.5))
                             .foregroundColor(AppColors.ink4)
                         Text("  ·  ")

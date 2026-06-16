@@ -34,7 +34,7 @@ struct EMOMTimerView: View {
                 TimerChrome(
                     label: chromeLabel,
                     current: max(0, viewModel.currentRound - 1),
-                    total: config.targetRounds,
+                    total: config.targetMinutes,
                     accent: isOvertime ? AppColors.red : AppColors.ink3,
                     onEnd: { showExitConfirmation = true }
                 )
@@ -122,7 +122,7 @@ struct EMOMTimerView: View {
                     .font(AppTypography.mono(18, weight: .semibold))
                 + Text("  ·  ")
                     .foregroundColor(AppColors.ink4)
-                + Text("\(config.targetRounds) minutes EMOM")
+                + Text("\(config.targetMinutes) minutes EMOM")
                     .font(.system(size: 14))
             )
             .foregroundColor(AppColors.ink2)

@@ -154,7 +154,7 @@ class TimerViewModel: ObservableObject {
             secondsIntoMinute = 0
             lastBeepSecond = -1
 
-            if currentRound < config.targetRounds {
+            if currentRound < config.targetMinutes {
                 startNewEMOMRound()
                 audio.playGoBeep()
             } else {
@@ -178,7 +178,7 @@ class TimerViewModel: ObservableObject {
         isSetInProgress = false
         setStartTime = nil
 
-        if currentRound >= config.targetRounds {
+        if currentRound >= config.targetMinutes {
             completeWorkout()
         }
     }

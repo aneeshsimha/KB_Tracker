@@ -14,7 +14,9 @@ final class WorkoutSession {
     private var modeRaw: String = WorkoutMode.emom.rawValue
     private var kettlebellTypeRaw: String = KBType.double.rawValue
     var weight: Int = 20                        // Weight in kg (12-24)
-    var targetRounds: Int = 20                  // EMOM: minutes, Rounds: target count
+    // Storage: EMOM sessions store the minute count here; Rounds sessions store the round count.
+    // Use targetMinutes for EMOM duration reads (see computed accessor below).
+    var targetRounds: Int = 20
     var completedRounds: Int = 0
     var totalDuration: TimeInterval = 0         // Total workout time in seconds
     var restDuration: Int? = nil                // Rest between sets (rounds mode only)
@@ -86,6 +88,13 @@ extension WorkoutSession {
     // Rounds display string (e.g., "18/20")
     var roundsDisplay: String {
         "\(completedRounds)/\(targetRounds)"
+    }
+
+    // EMOM-only semantic accessor — wraps targetRounds for clarity at call sites.
+    // Do not use for Rounds sessions.
+    var targetMinutes: Int {
+        get { targetRounds }
+        set { targetRounds = newValue }
     }
 
     // Press: total reps across all ladders (including a trailing partial).

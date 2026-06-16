@@ -95,7 +95,7 @@ struct HistoryDetailView: View {
             (
                 Text("\(session.completedRounds)")
                     .foregroundColor(AppColors.ink)
-                + Text("/\(session.targetRounds)")
+                + Text("/\(session.mode == .emom ? session.targetMinutes : session.targetRounds)")
                     .foregroundColor(AppColors.ink3)
             )
             .font(AppTypography.numeralLg)

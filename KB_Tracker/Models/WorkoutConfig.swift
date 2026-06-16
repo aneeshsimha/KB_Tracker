@@ -36,4 +36,7 @@ struct WorkoutConfig {
         case .double: return "2×\(weight)kg"
         }
     }
+
+    // EMOM-only semantic accessor — targetRounds stores minutes for EMOM configs.
+    var targetMinutes: Int { targetRounds }
 }

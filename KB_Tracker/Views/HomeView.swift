@@ -316,7 +316,7 @@ struct HomeView: View {
                         Text("\(session.completedRounds)")
                             .font(AppTypography.mono(38, weight: .bold))
                             .foregroundColor(AppColors.ink)
-                        Text("/\(session.targetRounds)")
+                        Text("/\(session.mode == .emom ? session.targetMinutes : session.targetRounds)")
                             .font(AppTypography.mono(38, weight: .medium))
                             .foregroundColor(AppColors.ink3)
                     }
@@ -401,7 +401,7 @@ struct HomeView: View {
         guard let last = lastSession else { return }
         mode = last.mode
         if last.mode == .emom {
-            targetMinutes = last.targetRounds
+            targetMinutes = last.targetMinutes
         } else {
             targetRounds = last.targetRounds
             restDuration = last.restDuration ?? 60
