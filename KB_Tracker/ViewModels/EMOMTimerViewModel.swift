@@ -27,7 +27,6 @@ final class EMOMTimerViewModel: ObservableObject {
     private let audio: AudioCueing
     private let now: () -> Date
     private var setStartTime: Date? = nil
-    private var getReadyStartTime: Date? = nil
     private var lastBeepSecond: Int = -1
     private var timer: AnyCancellable? = nil
 
@@ -58,7 +57,6 @@ final class EMOMTimerViewModel: ObservableObject {
     // MARK: - Timer Control
 
     func start() {
-        getReadyStartTime = now()
         startTimer()
     }
 
