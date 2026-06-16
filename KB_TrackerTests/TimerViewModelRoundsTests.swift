@@ -16,7 +16,7 @@ struct TimerViewModelRoundsTests {
 
     /// A fake now that jumps 6 s per call causes a single tick to transition from
     /// getReady → working with go-beep and currentRound == 1.
-    @Test func getRready_fakeClockJumps_transitionsToWorking() {
+    @Test func getReady_fakeClockJumps_transitionsToWorking() {
         let spy = SpyAudioService()
         let config = WorkoutConfig.rounds(kettlebellType: .single, weight: 16, rounds: 3, restSeconds: 10)
 
@@ -308,7 +308,7 @@ struct TimerViewModelRoundsTests {
     /// return the same second (e.g. elapsed stays at 4s for two ticks), no duplicate beep fires.
     /// This is correct deduplication behavior, but it means beep count depends on the clock,
     /// not on tick count.
-    @Test func behavioralOddity_getRready_beepsOnClockChangeNotTick() {
+    @Test func behavioralOddity_getReady_beepsOnClockChangeNotTick() {
         let spy = SpyAudioService()
         let config = WorkoutConfig.rounds(kettlebellType: .single, weight: 16, rounds: 3, restSeconds: 10)
 
