@@ -12,14 +12,14 @@ struct RoundsTimerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @StateObject private var viewModel: TimerViewModel
+    @StateObject private var viewModel: RoundsTimerViewModel
 
     @State private var showExitConfirmation: Bool = false
     @State private var navigateToSummary: Bool = false
 
     init(config: WorkoutConfig) {
         self.config = config
-        _viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
+        _viewModel = StateObject(wrappedValue: RoundsTimerViewModel(config: config))
     }
 
     var body: some View {
@@ -190,7 +190,7 @@ struct RoundsTimerView: View {
         switch viewModel.roundsPhase {
         case .working:
             VStack(spacing: 12) {
-                Button(action: { viewModel.handleRoundsSetDone() }) {
+                Button(action: { viewModel.setDone() }) {
                     Text("Set Done")
                         .font(.system(size: 18, weight: .bold))
                         .kerning(18 * 0.08)

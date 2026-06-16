@@ -12,14 +12,14 @@ struct EMOMTimerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @StateObject private var viewModel: TimerViewModel
+    @StateObject private var viewModel: EMOMTimerViewModel
 
     @State private var showExitConfirmation: Bool = false
     @State private var navigateToSummary: Bool = false
 
     init(config: WorkoutConfig) {
         self.config = config
-        _viewModel = StateObject(wrappedValue: TimerViewModel(config: config))
+        _viewModel = StateObject(wrappedValue: EMOMTimerViewModel(config: config))
     }
 
     private var isOvertime: Bool { viewModel.isOvertime }
@@ -162,7 +162,7 @@ struct EMOMTimerView: View {
     private var footer: some View {
         if viewModel.emomPhase == .active {
             VStack(spacing: 12) {
-                Button(action: { viewModel.handleEMOMSetDone() }) {
+                Button(action: { viewModel.setDone() }) {
                     Text("Set Done")
                         .font(.system(size: 18, weight: .bold))
                         .kerning(18 * 0.08)
