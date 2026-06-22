@@ -15,6 +15,9 @@ enum KBIcon: String {
     case minus   = "minus"
     case trash   = "trash"
     case dots    = "ellipsis"
+    case share   = "square.and.arrow.up"
+    case gear    = "gearshape"
+    case chart   = "chart.bar"
 }
 
 /// Circular icon button (kb IconBtn): surface fill, hairline border.

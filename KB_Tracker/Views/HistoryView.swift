@@ -18,6 +18,7 @@ struct HistoryView: View {
     private var totalHours: Double { sessions.reduce(0.0) { $0 + $1.totalDuration } / 3600 }
 
     private var groups: [WeekGroup] { groupByWeek(sessions) }
+    private var exportCSV: String { WorkoutExporter.csv(from: sessions) }
 
     var body: some View {
         ZStack {
@@ -89,7 +90,20 @@ struct HistoryView: View {
             Spacer()
             Eyebrow("HISTORY")
             Spacer()
-            Color.clear.frame(width: 32, height: 1)
+            ShareLink(
+                item: exportCSV,
+                preview: SharePreview("KB Tracker Sessions", image: Image(systemName: "figure.strengthtraining.traditional"))
+            ) {
+                Image(systemName: KBIcon.share.rawValue)
+                    .font(.system(size: 32 * 0.42, weight: .semibold))
+                    .foregroundColor(AppColors.ink)
+                    .frame(width: 32, height: 32)
+                    .background(AppColors.surface)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(AppColors.hairline, lineWidth: 1))
+            }
+            .buttonStyle(TapScaleStyle())
+            .disabled(sessions.isEmpty)
         }
         .frame(height: 32)
         .padding(.horizontal, 20)
