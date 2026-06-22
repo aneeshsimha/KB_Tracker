@@ -19,6 +19,13 @@ class AudioService: AudioCueing {
         configureAudioSession()
     }
 
+    private var soundEnabled: Bool {
+        // Default true if key not set
+        UserDefaults.standard.object(forKey: "kb_pref_sound") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "kb_pref_sound")
+    }
+
     private func configureAudioSession() {
         #if os(iOS)
         do {
@@ -37,16 +44,19 @@ class AudioService: AudioCueing {
 
     /// Play countdown warning beep (softer, shorter)
     func playCountdownBeep() {
+        guard soundEnabled else { return }
         playSystemSound(.tock)
     }
 
     /// Play GO beep (louder, more prominent)
     func playGoBeep() {
+        guard soundEnabled else { return }
         playSystemSound(.tink)
     }
 
     /// Play completion sound (workout finished)
     func playCompletionSound() {
+        guard soundEnabled else { return }
         playSystemSound(.fanfare)
     }
 

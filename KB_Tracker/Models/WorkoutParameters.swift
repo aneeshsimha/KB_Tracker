@@ -21,5 +21,10 @@ enum WorkoutParameters {
     static let laddersMin = 1
     static let laddersMax = 10
 
-    static let getReadySeconds = 5
+    static var getReadySeconds: Int {
+        let stored = UserDefaults.standard.integer(forKey: "kb_pref_getReady")
+        return stored > 0 ? stored : 5
+    }
+
+    static let getReadyOptions = [3, 5, 10]
 }

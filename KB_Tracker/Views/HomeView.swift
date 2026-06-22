@@ -22,6 +22,7 @@ struct HomeView: View {
     @AppStorage("kb_pref_weight") private var prefWeight: Int = 20
 
     @State private var route: HomeRoute?
+    @State private var showSettings = false
     @State private var workoutType: WorkoutType = .abc
     @State private var targetLadders: Int = 5        // press
 
@@ -104,6 +105,7 @@ struct HomeView: View {
                 targetRounds = targetMinutes
             }
         }
+        .sheet(isPresented: $showSettings) { SettingsView() }
         .navigationBarHidden(true)
     }
 
@@ -113,7 +115,10 @@ struct HomeView: View {
         HStack {
             Eyebrow("KB · TRACKER")
             Spacer()
-            IconButton(icon: .history) { route = .history }
+            HStack(spacing: 8) {
+                    IconButton(icon: .gear) { showSettings = true }
+                    IconButton(icon: .history) { route = .history }
+                }
         }
         .padding(.horizontal, 20)
         .padding(.top, 14)
