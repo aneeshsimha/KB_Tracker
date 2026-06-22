@@ -50,6 +50,11 @@ final class RoundsTimerViewModel: ObservableObject {
 
     func start() {
         getReadyStartTime = now()
+        LiveActivityService.shared.start(
+            workoutType: config.workoutType.rawValue,
+            totalTarget: config.targetRounds,
+            mode: config.mode.rawValue
+        )
         startTimer()
     }
 
@@ -145,12 +150,22 @@ final class RoundsTimerViewModel: ObservableObject {
             roundsPhase = .complete
             audio.playCompletionSound()
             stop()
+            LiveActivityService.shared.end(
+                phase: "complete", currentRound: currentRound,
+                totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
+                mode: config.mode.rawValue
+            )
             createCompletedSession()
         } else {
             roundsPhase = .resting
             restCountdown = config.restDuration ?? 60
             restStartTime = now()
             lastBeepSecond = -1
+            LiveActivityService.shared.update(
+                phase: "resting", currentRound: currentRound,
+                totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
+                mode: config.mode.rawValue
+            )
         }
     }
 
@@ -166,6 +181,11 @@ final class RoundsTimerViewModel: ObservableObject {
         setStartTime = now()
         currentSetElapsed = 0
         lastBeepSecond = -1
+        LiveActivityService.shared.update(
+            phase: "active", currentRound: currentRound,
+            totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
+            mode: config.mode.rawValue
+        )
     }
 
     // MARK: - Workout Completion
@@ -188,6 +208,11 @@ final class RoundsTimerViewModel: ObservableObject {
 
     func savePartialWorkout() {
         stop()
+        LiveActivityService.shared.end(
+            phase: "complete", currentRound: currentRound,
+            totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
+            mode: config.mode.rawValue
+        )
 
         let session = WorkoutSession(
             mode: config.mode,

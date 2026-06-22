@@ -57,6 +57,11 @@ final class EMOMTimerViewModel: ObservableObject {
     // MARK: - Timer Control
 
     func start() {
+        LiveActivityService.shared.start(
+            workoutType: config.workoutType.rawValue,
+            totalTarget: config.targetMinutes,
+            mode: config.mode.rawValue
+        )
         startTimer()
     }
 
@@ -140,6 +145,11 @@ final class EMOMTimerViewModel: ObservableObject {
         currentRound += 1
         isSetInProgress = true
         setStartTime = now()
+        LiveActivityService.shared.update(
+            phase: "active", currentRound: currentRound,
+            totalRounds: config.targetMinutes, elapsedSeconds: totalElapsed,
+            mode: config.mode.rawValue
+        )
     }
 
     func setDone() {
@@ -162,6 +172,11 @@ final class EMOMTimerViewModel: ObservableObject {
         emomPhase = .complete
         audio.playCompletionSound()
         stop()
+        LiveActivityService.shared.end(
+            phase: "complete", currentRound: currentRound,
+            totalRounds: config.targetMinutes, elapsedSeconds: totalElapsed,
+            mode: config.mode.rawValue
+        )
         createCompletedSession()
     }
 
@@ -183,6 +198,11 @@ final class EMOMTimerViewModel: ObservableObject {
 
     func savePartialWorkout() {
         stop()
+        LiveActivityService.shared.end(
+            phase: "complete", currentRound: currentRound,
+            totalRounds: config.targetMinutes, elapsedSeconds: totalElapsed,
+            mode: config.mode.rawValue
+        )
 
         let session = WorkoutSession(
             mode: config.mode,
