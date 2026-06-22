@@ -29,14 +29,16 @@ struct StatsView: View {
         return (0..<8).reversed().map { weekOffset in
             guard let weekStart = cal.date(byAdding: .weekOfYear, value: -weekOffset, to: now),
                   let weekInterval = cal.dateInterval(of: .weekOfYear, for: weekStart) else {
-                return WeekBucket(weekOffset: weekOffset, sessionCount: 0, avgSetTimeTimes: [])
+                return WeekBucket(weekOffset: weekOffset, sessionCount: 0, avgSetTimeTimes: [], totalReps: 0)
             }
             let weekSessions = sessions.filter { weekInterval.contains($0.date) }
             let setTimes = weekSessions.flatMap { $0.setTimes }
+            let totalReps = weekSessions.reduce(0) { $0 + $1.totalReps }
             return WeekBucket(
                 weekOffset: weekOffset,
                 sessionCount: weekSessions.count,
-                avgSetTimeTimes: setTimes
+                avgSetTimeTimes: setTimes,
+                totalReps: totalReps
             )
         }
     }
@@ -49,6 +51,7 @@ struct StatsView: View {
             return times.reduce(0, +) / Double(times.count)
         }
     }
+    private var repsSeries: [TimeInterval] { weekBuckets.map { TimeInterval($0.totalReps) } }
 
     var body: some View {
         ZStack {
@@ -100,16 +103,22 @@ struct StatsView: View {
                             .kbCard()
 
                             // Weekly avg set time
-                            let hasSetData = avgSetSeries.contains { $0 > 0 }
-                            if hasSetData {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Eyebrow("WEEKLY AVG SET TIME")
-                                    SparkBars(times: avgSetSeries, mode: .emom, height: 48)
-                                    weekLabels
-                                }
-                                .padding(16)
-                                .kbCard()
+                            VStack(alignment: .leading, spacing: 8) {
+                                Eyebrow("WEEKLY AVG SET TIME")
+                                SparkBars(times: avgSetSeries, mode: .emom, height: 48)
+                                weekLabels
                             }
+                            .padding(16)
+                            .kbCard()
+
+                            // Weekly total reps
+                            VStack(alignment: .leading, spacing: 8) {
+                                Eyebrow("WEEKLY REPS")
+                                SparkBars(times: repsSeries, mode: .rounds, height: 48)
+                                weekLabels
+                            }
+                            .padding(16)
+                            .kbCard()
 
                             // Lifetime averages
                             HStack(spacing: 8) {
@@ -150,6 +159,7 @@ private struct WeekBucket {
     let weekOffset: Int
     let sessionCount: Int
     let avgSetTimeTimes: [TimeInterval]
+    let totalReps: Int
 }
 
 #Preview {
