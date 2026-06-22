@@ -10,7 +10,7 @@ final class LiveActivityService {
 
     private var activity: Activity<KBTimerAttributes>?
 
-    func start(workoutType: String, totalTarget: Int, mode: String) {
+    func start(workoutType: String, totalTarget: Int, mode: String, getReadySeconds: Int) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         let state = KBTimerAttributes.ContentState(
@@ -18,7 +18,8 @@ final class LiveActivityService {
             currentRound: 0,
             totalRounds: totalTarget,
             elapsedSeconds: 0,
-            mode: mode
+            mode: mode,
+            countdownEndDate: Date().addingTimeInterval(TimeInterval(getReadySeconds))
         )
         let attrs = KBTimerAttributes(workoutType: workoutType, totalTarget: totalTarget)
 
@@ -32,14 +33,15 @@ final class LiveActivityService {
         }
     }
 
-    func update(phase: String, currentRound: Int, totalRounds: Int, elapsedSeconds: TimeInterval, mode: String) {
+    func update(phase: String, currentRound: Int, totalRounds: Int, elapsedSeconds: TimeInterval, mode: String, countdownEndDate: Date) {
         guard let activity else { return }
         let state = KBTimerAttributes.ContentState(
             phase: phase,
             currentRound: currentRound,
             totalRounds: totalRounds,
             elapsedSeconds: elapsedSeconds,
-            mode: mode
+            mode: mode,
+            countdownEndDate: countdownEndDate
         )
         Task {
             await activity.update(.init(state: state, staleDate: nil))
@@ -53,7 +55,8 @@ final class LiveActivityService {
             currentRound: currentRound,
             totalRounds: totalRounds,
             elapsedSeconds: elapsedSeconds,
-            mode: mode
+            mode: mode,
+            countdownEndDate: Date()
         )
         Task {
             await activity.end(.init(state: state, staleDate: nil), dismissalPolicy: .default)

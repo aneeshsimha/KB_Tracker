@@ -53,7 +53,8 @@ final class RoundsTimerViewModel: ObservableObject {
         LiveActivityService.shared.start(
             workoutType: config.workoutType.rawValue,
             totalTarget: config.targetRounds,
-            mode: config.mode.rawValue
+            mode: config.mode.rawValue,
+            getReadySeconds: WorkoutParameters.getReadySeconds
         )
         startTimer()
     }
@@ -164,7 +165,8 @@ final class RoundsTimerViewModel: ObservableObject {
             LiveActivityService.shared.update(
                 phase: "resting", currentRound: currentRound,
                 totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
-                mode: config.mode.rawValue
+                mode: config.mode.rawValue,
+                countdownEndDate: Date().addingTimeInterval(TimeInterval(config.restDuration ?? 60))
             )
         }
     }
@@ -184,7 +186,8 @@ final class RoundsTimerViewModel: ObservableObject {
         LiveActivityService.shared.update(
             phase: "active", currentRound: currentRound,
             totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
-            mode: config.mode.rawValue
+            mode: config.mode.rawValue,
+            countdownEndDate: Date()
         )
     }
 

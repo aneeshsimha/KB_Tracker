@@ -244,7 +244,13 @@ fileprivate struct SessionRow: View {
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(session.mode == .emom ? "EMOM" : "Rounds")
+                        Text({
+                            switch session.workoutType {
+                            case .snatchTest:    return "Snatch Test"
+                            case .swingInterval: return "Swing Interval"
+                            default:             return session.mode == .emom ? "EMOM" : "Rounds"
+                            }
+                        }())
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(AppColors.ink)
                         Text(weightPhrase)

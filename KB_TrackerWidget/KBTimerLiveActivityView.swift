@@ -34,9 +34,10 @@ struct KBTimerLiveActivityView: View {
                 Text(workoutTypeLabel)
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.6))
-                Text(elapsedFormatted)
+                Text(state.countdownEndDate, style: .timer)
                     .font(.system(size: 22, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white)
+                    .monospacedDigit()
             }
         }
         .padding(16)
@@ -52,10 +53,7 @@ struct KBTimerLiveActivityView: View {
         }
     }
 
-    private var elapsedFormatted: String {
-        let s = Int(state.elapsedSeconds)
-        return String(format: "%d:%02d", s / 60, s % 60)
-    }
+
 }
 
 struct KBTimerLiveActivity: Widget {
@@ -76,13 +74,13 @@ struct KBTimerLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing) {
-                        Text("ELAPSED")
+                        Text("COUNTDOWN")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.6))
-                        let s = Int(context.state.elapsedSeconds)
-                        Text(String(format: "%d:%02d", s / 60, s % 60))
+                        Text(context.state.countdownEndDate, style: .timer)
                             .font(.system(size: 20, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white)
+                            .monospacedDigit()
                     }
                 }
             } compactLeading: {
@@ -90,9 +88,10 @@ struct KBTimerLiveActivity: Widget {
                     .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
             } compactTrailing: {
-                Text("/\(context.state.totalRounds)")
+                Text(context.state.countdownEndDate, style: .timer)
                     .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
             } minimal: {
                 Text("\(context.state.currentRound)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))

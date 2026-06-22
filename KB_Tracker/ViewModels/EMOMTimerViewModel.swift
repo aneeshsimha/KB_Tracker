@@ -60,7 +60,8 @@ final class EMOMTimerViewModel: ObservableObject {
         LiveActivityService.shared.start(
             workoutType: config.workoutType.rawValue,
             totalTarget: config.targetMinutes,
-            mode: config.mode.rawValue
+            mode: config.mode.rawValue,
+            getReadySeconds: WorkoutParameters.getReadySeconds
         )
         startTimer()
     }
@@ -148,7 +149,8 @@ final class EMOMTimerViewModel: ObservableObject {
         LiveActivityService.shared.update(
             phase: "active", currentRound: currentRound,
             totalRounds: config.targetMinutes, elapsedSeconds: totalElapsed,
-            mode: config.mode.rawValue
+            mode: config.mode.rawValue,
+            countdownEndDate: Date().addingTimeInterval(60)
         )
     }
 

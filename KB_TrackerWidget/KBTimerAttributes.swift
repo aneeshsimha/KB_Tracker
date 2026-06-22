@@ -11,6 +11,7 @@ struct KBTimerAttributes: ActivityAttributes {
         var totalRounds: Int
         var elapsedSeconds: TimeInterval
         var mode: String            // "emom" | "rounds"
+        var countdownEndDate: Date  // target date for the OS countdown timer
     }
 
     var workoutType: String         // "abc" | "snatchTest" | "swingInterval" | "press"
