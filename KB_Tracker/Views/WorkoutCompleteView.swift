@@ -4,6 +4,7 @@
 // Post-workout summary (complete.jsx): hero, 2×2 stat grid, set chart,
 // editable notes card, and a primary Save Session button.
 
+import HealthKit
 import SwiftUI
 import SwiftData
 
@@ -16,6 +17,9 @@ struct WorkoutCompleteView: View {
 
     @State private var notes: String
     @State private var showDiscardAlert = false
+    @State private var healthSaveState: HealthSaveState = .idle
+
+    private enum HealthSaveState { case idle, saving, saved, failed }
 
     init(session: WorkoutSession, onSaveComplete: (() -> Void)? = nil) {
         self.session = session
@@ -60,10 +64,15 @@ struct WorkoutCompleteView: View {
                     .padding(.bottom, 16)
                 }
 
-                PrimaryButton(title: "Save Session", action: saveWorkout)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                    .padding(.bottom, 20)
+                VStack(spacing: 10) {
+                    PrimaryButton(title: "Save Session", action: saveWorkout)
+                    if HealthKitService.isAvailable {
+                        healthButton
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 20)
             }
         }
         .navigationBarHidden(true)
@@ -231,6 +240,39 @@ struct WorkoutCompleteView: View {
                 .lineLimit(3...)
                 .tint(AppColors.ink)
             }
+        }
+    }
+
+    // MARK: - Health button
+
+    private var healthButton: some View {
+        Button {
+            Task {
+                healthSaveState = .saving
+                let ok = await HealthKitService.save(session)
+                healthSaveState = ok ? .saved : .failed
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: healthSaveState == .saved ? "checkmark" : "heart.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(healthButtonLabel)
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundColor(healthSaveState == .saved ? AppColors.green : AppColors.ink3)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+        }
+        .buttonStyle(TapScaleStyle())
+        .disabled(healthSaveState == .saving || healthSaveState == .saved)
+    }
+
+    private var healthButtonLabel: String {
+        switch healthSaveState {
+        case .idle:   return "Save to Apple Health"
+        case .saving: return "Saving…"
+        case .saved:  return "Saved to Health"
+        case .failed: return "Health unavailable"
         }
     }
 
