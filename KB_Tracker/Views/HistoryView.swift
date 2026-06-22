@@ -200,6 +200,15 @@ fileprivate struct SessionRow: View {
         session.kettlebellType == .double ? "2×\(session.weight)kg" : "\(session.weight)kg"
     }
 
+    private var workoutTitle: String {
+        switch session.workoutType {
+        case .abc:          return session.mode == .emom ? "EMOM" : "Rounds"
+        case .snatchTest:   return "Snatch Test"
+        case .swingInterval: return "Swing Interval"
+        case .press:        return "Press"
+        }
+    }
+
     var body: some View {
         HStack(spacing: 14) {
             // date block
@@ -244,13 +253,7 @@ fileprivate struct SessionRow: View {
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text({
-                            switch session.workoutType {
-                            case .snatchTest:    return "Snatch Test"
-                            case .swingInterval: return "Swing Interval"
-                            default:             return session.mode == .emom ? "EMOM" : "Rounds"
-                            }
-                        }())
+                        Text(workoutTitle)
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(AppColors.ink)
                         Text(weightPhrase)

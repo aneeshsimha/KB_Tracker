@@ -289,7 +289,7 @@ struct WorkoutCompleteView: View {
         case .idle:   return "Save to Apple Health"
         case .saving: return "Saving…"
         case .saved:  return "Saved to Health"
-        case .failed: return "Health unavailable"
+        case .failed: return "Save failed — tap to retry"
         }
     }
 

@@ -34,10 +34,16 @@ struct KBTimerLiveActivityView: View {
                 Text(workoutTypeLabel)
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.6))
-                Text(state.countdownEndDate, style: .timer)
-                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .monospacedDigit()
+                if state.phase == "complete" {
+                    Text("0:00")
+                        .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                } else {
+                    Text(state.countdownEndDate, style: .timer)
+                        .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .monospacedDigit()
+                }
             }
         }
         .padding(16)
@@ -74,13 +80,19 @@ struct KBTimerLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing) {
-                        Text("COUNTDOWN")
+                        Text(context.state.phase == "complete" ? "DONE" : "COUNTDOWN")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.6))
-                        Text(context.state.countdownEndDate, style: .timer)
-                            .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .monospacedDigit()
+                        if context.state.phase == "complete" {
+                            Text("0:00")
+                                .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                        } else {
+                            Text(context.state.countdownEndDate, style: .timer)
+                                .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
+                        }
                     }
                 }
             } compactLeading: {
@@ -88,10 +100,16 @@ struct KBTimerLiveActivity: Widget {
                     .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
             } compactTrailing: {
-                Text(context.state.countdownEndDate, style: .timer)
-                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .monospacedDigit()
+                if context.state.phase == "complete" {
+                    Text("✓")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                } else {
+                    Text(context.state.countdownEndDate, style: .timer)
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .monospacedDigit()
+                }
             } minimal: {
                 Text("\(context.state.currentRound)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
