@@ -173,6 +173,7 @@ final class EMOMTimerViewModel: ObservableObject {
             targetRounds: config.targetRounds,
             restDuration: config.restDuration
         )
+        session.workoutType = config.workoutType
         session.completedRounds = currentRound
         session.totalDuration = totalElapsed
         session.setTimes = setTimes
@@ -190,6 +191,7 @@ final class EMOMTimerViewModel: ObservableObject {
             targetRounds: config.targetRounds,
             restDuration: config.restDuration
         )
+        session.workoutType = config.workoutType
         session.completedRounds = currentRound
         session.totalDuration = totalElapsed
         session.setTimes = setTimes

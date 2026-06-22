@@ -370,9 +370,10 @@ struct HomeView: View {
 
     private var startTitle: String {
         switch workoutType {
-        case .abc:   return mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
-        case .press: return "Start · \(targetLadders) ladders"
-        case .snatchTest, .swingInterval: return "Start"
+        case .abc:           return mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
+        case .press:         return "Start · \(targetLadders) ladders"
+        case .snatchTest:    return "Start · \(targetMinutes) min"
+        case .swingInterval: return "Start · \(targetRounds) rounds"
         }
     }
 

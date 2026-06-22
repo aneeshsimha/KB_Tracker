@@ -30,6 +30,16 @@ struct WorkoutConfig {
                       weight: weight, targetRounds: 0, restDuration: nil, targetLadders: targetLadders)
     }
 
+    static func snatchTest(kettlebellType: KBType, weight: Int, minutes: Int) -> WorkoutConfig {
+        WorkoutConfig(workoutType: .snatchTest, mode: .emom, kettlebellType: kettlebellType,
+                      weight: weight, targetRounds: minutes, restDuration: nil, targetLadders: 0)
+    }
+
+    static func swingInterval(kettlebellType: KBType, weight: Int, rounds: Int, restSeconds: Int) -> WorkoutConfig {
+        WorkoutConfig(workoutType: .swingInterval, mode: .rounds, kettlebellType: kettlebellType,
+                      weight: weight, targetRounds: rounds, restDuration: restSeconds, targetLadders: 0)
+    }
+
     var weightDisplay: String {
         switch kettlebellType {
         case .single: return "\(weight)kg"

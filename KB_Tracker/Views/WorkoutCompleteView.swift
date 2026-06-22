@@ -127,7 +127,12 @@ struct WorkoutCompleteView: View {
             .lineSpacing(2)
             .padding(.bottom, 10)
 
-            bodyLine
+            switch session.workoutType {
+            case .abc:           bodyLine
+            case .snatchTest:    snatchBodyLine
+            case .swingInterval: swingBodyLine
+            case .press:         EmptyView()
+            }
         }
         .padding(.vertical, 6)
     }
@@ -150,6 +155,18 @@ struct WorkoutCompleteView: View {
 
         return (tLead + tCleans + tCleansLabel + tPresses + tPressesLabel + tSquats + tSquatsLabel)
             .font(AppTypography.bodyText)
+    }
+
+    private var snatchBodyLine: some View {
+        Text("That's \(session.completedRounds * 20) snatches.")
+            .font(AppTypography.bodyText)
+            .foregroundColor(AppColors.ink2)
+    }
+
+    private var swingBodyLine: some View {
+        Text("That's \(session.completedRounds) sets of swings.")
+            .font(AppTypography.bodyText)
+            .foregroundColor(AppColors.ink2)
     }
 
     // MARK: - Press hero
