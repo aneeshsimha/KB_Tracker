@@ -94,6 +94,8 @@ struct HomeView: View {
                 )
             case .history:
                 HistoryView()
+            case .stats:
+                StatsView()
             }
         }
         .onAppear {
@@ -116,6 +118,7 @@ struct HomeView: View {
             Eyebrow("KB · TRACKER")
             Spacer()
             HStack(spacing: 8) {
+                    IconButton(icon: .chart) { route = .stats }
                     IconButton(icon: .gear) { showSettings = true }
                     IconButton(icon: .history) { route = .history }
                 }
@@ -421,6 +424,7 @@ fileprivate enum HomeRoute: Hashable, Identifiable {
     case rounds
     case press
     case history
+    case stats
 
     var id: Self { self }
 }
