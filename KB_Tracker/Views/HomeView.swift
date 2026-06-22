@@ -56,8 +56,10 @@ struct HomeView: View {
                 // Footer: start
                 PrimaryButton(title: startTitle) {
                     switch workoutType {
-                    case .abc:   route = mode == .emom ? .emom : .rounds
-                    case .press: route = .press
+                    case .abc:           route = mode == .emom ? .emom : .rounds
+                    case .press:         route = .press
+                    case .snatchTest:    route = .emom
+                    case .swingInterval: route = .rounds
                     }
                 }
                 .padding(.horizontal, 20)
@@ -68,22 +70,15 @@ struct HomeView: View {
         .navigationDestination(item: $route) { dest in
             switch dest {
             case .emom:
-                EMOMTimerView(
-                    config: .emom(
-                        kettlebellType: kettlebellType,
-                        weight: weight,
-                        minutes: targetMinutes
-                    )
-                )
+                let emomConfig: WorkoutConfig = workoutType == .snatchTest
+                    ? .snatchTest(kettlebellType: kettlebellType, weight: weight, minutes: targetMinutes)
+                    : .emom(kettlebellType: kettlebellType, weight: weight, minutes: targetMinutes)
+                EMOMTimerView(config: emomConfig)
             case .rounds:
-                RoundsTimerView(
-                    config: .rounds(
-                        kettlebellType: kettlebellType,
-                        weight: weight,
-                        rounds: targetRounds,
-                        restSeconds: restDuration
-                    )
-                )
+                let roundsConfig: WorkoutConfig = workoutType == .swingInterval
+                    ? .swingInterval(kettlebellType: kettlebellType, weight: weight, rounds: targetRounds, restSeconds: restDuration)
+                    : .rounds(kettlebellType: kettlebellType, weight: weight, rounds: targetRounds, restSeconds: restDuration)
+                RoundsTimerView(config: roundsConfig)
             case .press:
                 PressLadderView(
                     config: .press(
@@ -137,16 +132,19 @@ struct HomeView: View {
             SegmentedToggle(
                 options: [
                     SegmentedOption(label: "ABC", value: WorkoutType.abc),
+                    SegmentedOption(label: "Snatch", value: WorkoutType.snatchTest),
+                    SegmentedOption(label: "Swing", value: WorkoutType.swingInterval),
                     SegmentedOption(label: "Press", value: WorkoutType.press),
                 ],
                 selection: $workoutType
             )
             .padding(.bottom, 22)
 
-            if workoutType == .abc {
-                abcSetup
-            } else {
-                pressSetup
+            switch workoutType {
+            case .abc:           abcSetup
+            case .snatchTest:    snatchSetup
+            case .swingInterval: swingSetup
+            case .press:         pressSetup
             }
         }
         .padding(.top, 16)
@@ -184,6 +182,80 @@ struct HomeView: View {
 
             Spacer().frame(height: 14)
             durationDial
+        }
+    }
+
+    private var snatchSetup: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Dial(
+                eyebrow: "LOAD",
+                value: "\(weight)",
+                unit: "kg",
+                onMinus: { stepWeight(-1) },
+                onPlus: { stepWeight(+1) }
+            ) {
+                EmptyView()
+            }
+            Spacer().frame(height: 14)
+            Dial(
+                eyebrow: "DURATION",
+                value: "\(targetMinutes)",
+                unit: "min",
+                onMinus: { targetMinutes = max(WorkoutParameters.emomMinutesMin, targetMinutes - 1) },
+                onPlus: { targetMinutes = min(WorkoutParameters.emomMinutesMax, targetMinutes + 1) }
+            ) {
+                EmptyView()
+            }
+        }
+    }
+
+    private var swingSetup: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Dial(
+                eyebrow: "LOAD",
+                value: "\(weight)",
+                unit: kettlebellType == .double ? "kg × 2" : "kg",
+                onMinus: { stepWeight(-1) },
+                onPlus: { stepWeight(+1) }
+            ) {
+                SegmentedToggle(
+                    options: [
+                        SegmentedOption(label: "Single", value: KBType.single),
+                        SegmentedOption(label: "Double", value: KBType.double),
+                    ],
+                    selection: $kettlebellType,
+                    inline: true
+                )
+                .padding(.top, 2)
+            }
+            Spacer().frame(height: 14)
+            Dial(
+                eyebrow: "ROUNDS",
+                value: "\(targetRounds)",
+                unit: "rds",
+                onMinus: { targetRounds = max(WorkoutParameters.roundsMin, targetRounds - 1) },
+                onPlus: { targetRounds = min(WorkoutParameters.roundsMax, targetRounds + 1) }
+            ) {
+                HStack {
+                    Eyebrow("REST")
+                    Spacer()
+                    HStack(spacing: 10) {
+                        StepperButton(icon: .minus) { stepRest(-1) }
+                        Text(restDuration.formattedMinutesSecondsPadded)
+                            .font(AppTypography.mono(17, weight: .bold))
+                            .foregroundColor(AppColors.ink)
+                            .frame(minWidth: 56)
+                            .multilineTextAlignment(.center)
+                        StepperButton(icon: .plus) { stepRest(+1) }
+                    }
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 4)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(AppColors.hairline).frame(height: 1)
+                }
+                .padding(.top, 4)
+            }
         }
     }
 
@@ -300,6 +372,7 @@ struct HomeView: View {
         switch workoutType {
         case .abc:   return mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
         case .press: return "Start · \(targetLadders) ladders"
+        case .snatchTest, .swingInterval: return "Start"
         }
     }
 
