@@ -29,7 +29,7 @@ struct StatsView: View {
         return (0..<8).reversed().map { weekOffset in
             guard let weekStart = cal.date(byAdding: .weekOfYear, value: -weekOffset, to: now),
                   let weekInterval = cal.dateInterval(of: .weekOfYear, for: weekStart) else {
-                return WeekBucket(weekOffset: weekOffset, sessionCount: 0, avgSetTimeTimes: [], totalReps: 0)
+                return WeekBucket(weekOffset: weekOffset, sessionCount: 0, setTimes: [], totalReps: 0)
             }
             let weekSessions = sessions.filter { weekInterval.contains($0.date) }
             let setTimes = weekSessions.flatMap { $0.setTimes }
@@ -37,7 +37,7 @@ struct StatsView: View {
             return WeekBucket(
                 weekOffset: weekOffset,
                 sessionCount: weekSessions.count,
-                avgSetTimeTimes: setTimes,
+                setTimes: setTimes,
                 totalReps: totalReps
             )
         }
@@ -46,7 +46,7 @@ struct StatsView: View {
     private var volumeSeries: [TimeInterval] { weekBuckets.map { TimeInterval($0.sessionCount) } }
     private var avgSetSeries: [TimeInterval] {
         weekBuckets.map { bucket in
-            let times = bucket.avgSetTimeTimes
+            let times = bucket.setTimes
             guard !times.isEmpty else { return 0 }
             return times.reduce(0, +) / Double(times.count)
         }
@@ -122,12 +122,8 @@ struct StatsView: View {
 
                             // Lifetime averages
                             HStack(spacing: 8) {
-                                if let avg = avgSetTime {
-                                    StatTile(label: "AVG SET", value: avg.formattedMinutesSecondsPadded)
-                                }
-                                if let best = bestSetTime {
-                                    StatTile(label: "BEST SET", value: best.formattedMinutesSecondsPadded)
-                                }
+                                StatTile(label: "AVG SET", value: avgSetTime.map { $0.formattedMinutesSecondsPadded } ?? "–")
+                                StatTile(label: "BEST SET", value: bestSetTime.map { $0.formattedMinutesSecondsPadded } ?? "–")
                             }
                         }
                         .padding(.horizontal, 20)
@@ -158,7 +154,7 @@ struct StatsView: View {
 private struct WeekBucket {
     let weekOffset: Int
     let sessionCount: Int
-    let avgSetTimeTimes: [TimeInterval]
+    let setTimes: [TimeInterval]
     let totalReps: Int
 }
 

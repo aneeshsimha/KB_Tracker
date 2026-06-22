@@ -13,3 +13,4 @@ xcuserdata/
 # Tools
 .claude/
 .conductor/
+/build_test_output
