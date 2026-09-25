@@ -18,7 +18,7 @@ struct HomeView: View {
     @State private var targetRounds: Int = 15        // Rounds mode
     @State private var restDuration: Int = 60        // Rounds mode
 
-    @AppStorage("kb_pref_kbType") private var prefKBType: String = KBType.double.rawValue
+    @AppStorage("kb_pref_kbType") private var prefKBType: KBType = .double
     @AppStorage("kb_pref_weight") private var prefWeight: Int = 20
 
     @State private var route: HomeRoute?
@@ -162,100 +162,29 @@ struct HomeView: View {
             )
             .padding(.bottom, 22)
 
-            Dial(
-                eyebrow: "LOAD",
-                value: "\(weight)",
-                unit: kettlebellType == .double ? "kg × 2" : "kg",
-                onMinus: { stepWeight(-1) },
-                onPlus: { stepWeight(+1) }
-            ) {
-                SegmentedToggle(
-                    options: [
-                        SegmentedOption(label: "Single", value: KBType.single),
-                        SegmentedOption(label: "Double", value: KBType.double),
-                    ],
-                    selection: $kettlebellType,
-                    inline: true
-                )
-                .padding(.top, 2)
-            }
-
+            loadDial()
             Spacer().frame(height: 14)
-            durationDial
+            if mode == .emom {
+                minutesDial(showTotal: true)
+            } else {
+                roundsDial
+            }
         }
     }
 
     private var snatchSetup: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Dial(
-                eyebrow: "LOAD",
-                value: "\(weight)",
-                unit: "kg",
-                onMinus: { stepWeight(-1) },
-                onPlus: { stepWeight(+1) }
-            ) {
-                EmptyView()
-            }
+            loadDial(kbToggle: false)
             Spacer().frame(height: 14)
-            Dial(
-                eyebrow: "DURATION",
-                value: "\(targetMinutes)",
-                unit: "min",
-                onMinus: { targetMinutes = max(WorkoutParameters.emomMinutesMin, targetMinutes - 1) },
-                onPlus: { targetMinutes = min(WorkoutParameters.emomMinutesMax, targetMinutes + 1) }
-            ) {
-                EmptyView()
-            }
+            minutesDial(showTotal: false)
         }
     }
 
     private var swingSetup: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Dial(
-                eyebrow: "LOAD",
-                value: "\(weight)",
-                unit: kettlebellType == .double ? "kg × 2" : "kg",
-                onMinus: { stepWeight(-1) },
-                onPlus: { stepWeight(+1) }
-            ) {
-                SegmentedToggle(
-                    options: [
-                        SegmentedOption(label: "Single", value: KBType.single),
-                        SegmentedOption(label: "Double", value: KBType.double),
-                    ],
-                    selection: $kettlebellType,
-                    inline: true
-                )
-                .padding(.top, 2)
-            }
+            loadDial()
             Spacer().frame(height: 14)
-            Dial(
-                eyebrow: "ROUNDS",
-                value: "\(targetRounds)",
-                unit: "rds",
-                onMinus: { targetRounds = max(WorkoutParameters.roundsMin, targetRounds - 1) },
-                onPlus: { targetRounds = min(WorkoutParameters.roundsMax, targetRounds + 1) }
-            ) {
-                HStack {
-                    Eyebrow("REST")
-                    Spacer()
-                    HStack(spacing: 10) {
-                        StepperButton(icon: .minus) { stepRest(-1) }
-                        Text(restDuration.formattedMinutesSecondsPadded)
-                            .font(AppTypography.mono(17, weight: .bold))
-                            .foregroundColor(AppColors.ink)
-                            .frame(minWidth: 56)
-                            .multilineTextAlignment(.center)
-                        StepperButton(icon: .plus) { stepRest(+1) }
-                    }
-                }
-                .padding(.top, 8)
-                .padding(.horizontal, 4)
-                .overlay(alignment: .top) {
-                    Rectangle().fill(AppColors.hairline).frame(height: 1)
-                }
-                .padding(.top, 4)
-            }
+            roundsDial
         }
     }
 
@@ -268,32 +197,25 @@ struct HomeView: View {
                 onMinus: { targetLadders = max(WorkoutParameters.laddersMin, targetLadders - 1) },
                 onPlus: { targetLadders = min(WorkoutParameters.laddersMax, targetLadders + 1) }
             ) {
-                HStack {
-                    Text("Total reps")
-                        .font(.system(size: 12))
-                        .foregroundColor(AppColors.ink3)
-                    Spacer()
-                    Text("\(targetLadders * 20)")
-                        .font(AppTypography.mono(12, weight: .regular))
-                        .foregroundColor(AppColors.ink3)
-                }
-                .padding(.top, 8)
-                .padding(.horizontal, 4)
-                .overlay(alignment: .top) {
-                    Rectangle().fill(AppColors.hairline).frame(height: 1)
-                }
-                .padding(.top, 4)
+                dialTotal("Total reps", "\(targetLadders * 20)")
             }
 
             Spacer().frame(height: 14)
 
-            Dial(
-                eyebrow: "LOAD",
-                value: "\(weight)",
-                unit: kettlebellType == .double ? "kg × 2" : "kg",
-                onMinus: { stepWeight(-1) },
-                onPlus: { stepWeight(+1) }
-            ) {
+            loadDial()
+        }
+    }
+
+    /// LOAD dial; with `kbToggle` it also shows the Single/Double footer.
+    private func loadDial(kbToggle: Bool = true) -> some View {
+        Dial(
+            eyebrow: "LOAD",
+            value: "\(weight)",
+            unit: kbToggle && kettlebellType == .double ? "kg × 2" : "kg",
+            onMinus: { stepWeight(-1) },
+            onPlus: { stepWeight(+1) }
+        ) {
+            if kbToggle {
                 SegmentedToggle(
                     options: [
                         SegmentedOption(label: "Single", value: KBType.single),
@@ -307,42 +229,29 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder
-    private var durationDial: some View {
-        if mode == .emom {
-            Dial(
-                eyebrow: "DURATION",
-                value: "\(targetMinutes)",
-                unit: "min",
-                onMinus: { stepDuration(-1) },
-                onPlus: { stepDuration(+1) }
-            ) {
-                HStack {
-                    Text("Total work")
-                        .font(.system(size: 12))
-                        .foregroundColor(AppColors.ink3)
-                    Spacer()
-                    Text((targetMinutes * 60).formattedMinutesSecondsPadded)
-                        .font(AppTypography.mono(12, weight: .regular))
-                        .foregroundColor(AppColors.ink3)
-                }
-                .padding(.top, 8)
-                .padding(.horizontal, 4)
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(AppColors.hairline)
-                        .frame(height: 1)
-                }
-                .padding(.top, 4)
+    private func minutesDial(showTotal: Bool) -> some View {
+        Dial(
+            eyebrow: "DURATION",
+            value: "\(targetMinutes)",
+            unit: "min",
+            onMinus: { stepMinutes(-1) },
+            onPlus: { stepMinutes(+1) }
+        ) {
+            if showTotal {
+                dialTotal("Total work", (targetMinutes * 60).formattedMinutesSecondsPadded)
             }
-        } else {
-            Dial(
-                eyebrow: "ROUNDS",
-                value: "\(targetRounds)",
-                unit: "rds",
-                onMinus: { stepDuration(-1) },
-                onPlus: { stepDuration(+1) }
-            ) {
+        }
+    }
+
+    private var roundsDial: some View {
+        Dial(
+            eyebrow: "ROUNDS",
+            value: "\(targetRounds)",
+            unit: "rds",
+            onMinus: { stepRounds(-1) },
+            onPlus: { stepRounds(+1) }
+        ) {
+            dialFooter {
                 HStack {
                     Eyebrow("REST")
                     Spacer()
@@ -356,16 +265,34 @@ struct HomeView: View {
                         StepperButton(icon: .plus) { stepRest(+1) }
                     }
                 }
-                .padding(.top, 8)
-                .padding(.horizontal, 4)
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(AppColors.hairline)
-                        .frame(height: 1)
-                }
-                .padding(.top, 4)
             }
         }
+    }
+
+    /// "Total …" readout row used as a dial footer.
+    private func dialTotal(_ label: String, _ value: String) -> some View {
+        dialFooter {
+            HStack {
+                Text(label)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.ink3)
+                Spacer()
+                Text(value)
+                    .font(AppTypography.mono(12, weight: .regular))
+                    .foregroundColor(AppColors.ink3)
+            }
+        }
+    }
+
+    /// Dial footer row with a hairline divider above it.
+    private func dialFooter<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(.top, 8)
+            .padding(.horizontal, 4)
+            .overlay(alignment: .top) {
+                Rectangle().fill(AppColors.hairline).frame(height: 1)
+            }
+            .padding(.top, 4)
     }
 
     private var startTitle: String {
@@ -398,7 +325,7 @@ struct HomeView: View {
                         Text("\(session.completedRounds)")
                             .font(AppTypography.mono(38, weight: .bold))
                             .foregroundColor(AppColors.ink)
-                        Text("/\(session.mode == .emom ? session.targetMinutes : session.targetRounds)")
+                        Text("/\(session.targetRounds)")
                             .font(AppTypography.mono(38, weight: .medium))
                             .foregroundColor(AppColors.ink3)
                     }
@@ -457,12 +384,12 @@ struct HomeView: View {
         weight = max(WorkoutParameters.weightMin, min(WorkoutParameters.weightMax, weight + d * WorkoutParameters.weightStep))
     }
 
-    private func stepDuration(_ d: Int) {
-        if mode == .emom {
-            targetMinutes = max(WorkoutParameters.emomMinutesMin, min(WorkoutParameters.emomMinutesMax, targetMinutes + d))
-        } else {
-            targetRounds = max(WorkoutParameters.roundsMin, min(WorkoutParameters.roundsMax, targetRounds + d))
-        }
+    private func stepMinutes(_ d: Int) {
+        targetMinutes = max(WorkoutParameters.emomMinutesMin, min(WorkoutParameters.emomMinutesMax, targetMinutes + d))
+    }
+
+    private func stepRounds(_ d: Int) {
+        targetRounds = max(WorkoutParameters.roundsMin, min(WorkoutParameters.roundsMax, targetRounds + d))
     }
 
     private func stepRest(_ d: Int) {
@@ -472,15 +399,13 @@ struct HomeView: View {
     // MARK: - Prefill logic
 
     private func prefillFromLastSession() {
-        let setup = HomeSetupLogic.initialKBSetup(
-            lastSession: lastSession,
-            prefKBType: prefKBType,
-            prefWeight: prefWeight
-        )
-        kettlebellType = setup.kbType
-        weight = setup.weight
-
-        guard let last = lastSession else { return }
+        guard let last = lastSession else {
+            kettlebellType = prefKBType
+            weight = prefWeight
+            return
+        }
+        kettlebellType = last.kettlebellType
+        weight = last.weight
         mode = last.mode
         if last.mode == .emom {
             targetMinutes = last.targetMinutes
@@ -493,14 +418,12 @@ struct HomeView: View {
 
 // MARK: - Navigation route
 
-fileprivate enum HomeRoute: Hashable, Identifiable {
+fileprivate enum HomeRoute: Hashable {
     case emom
     case rounds
     case press
     case history
     case stats
-
-    var id: Self { self }
 }
 
 // MARK: - Formatting helpers

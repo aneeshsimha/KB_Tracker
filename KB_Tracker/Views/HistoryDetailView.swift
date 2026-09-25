@@ -24,15 +24,7 @@ struct HistoryDetailView: View {
 
     private var times: [TimeInterval] { session.setTimes }
     private var isEMOM: Bool { session.mode == .emom }
-
-    private var fastest: TimeInterval { times.min() ?? 0 }
-    private var slowest: TimeInterval { times.max() ?? 0 }
-    private var avg: TimeInterval { session.averageSetTime ?? 0 }
-    private var overtimeCount: Int { isEMOM ? times.filter { $0 > 60 }.count : 0 }
-
-    private var weightPhrase: String {
-        session.kettlebellType == .double ? "2×\(session.weight)KG" : "\(session.weight)KG"
-    }
+    private var weightPhrase: String { session.weightDisplay.uppercased() }
 
     var body: some View {
         ZStack {
@@ -45,11 +37,11 @@ struct HistoryDetailView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         if session.workoutType == .press {
                             pressHero
-                            pressStatsGrid
+                            SessionStatsGrid(session: session, spacing: 8)
                             pressLadderGrid
                         } else {
                             hero
-                            statsGrid
+                            SessionStatsGrid(session: session, spacing: 8)
                             SetChart(setTimes: session.setTimes, mode: session.mode)
                             eachSetCard
                         }
@@ -78,7 +70,7 @@ struct HistoryDetailView: View {
         HStack {
             IconButton(icon: .back) { commitNotes(); dismiss() }
             Spacer()
-            Eyebrow(fullDate(session.date).uppercased())
+            Eyebrow(session.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).uppercased())
             Spacer()
             IconButton(icon: .trash, color: AppColors.red) { showDeleteConfirm = true }
         }
@@ -95,7 +87,7 @@ struct HistoryDetailView: View {
             (
                 Text("\(session.completedRounds)")
                     .foregroundColor(AppColors.ink)
-                + Text("/\(session.mode == .emom ? session.targetMinutes : session.targetRounds)")
+                + Text("/\(session.targetRounds)")
                     .foregroundColor(AppColors.ink3)
             )
             .font(AppTypography.numeralLg)
@@ -113,22 +105,6 @@ struct HistoryDetailView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Stats grid
-
-    private var statsGrid: some View {
-        let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
-        return LazyVGrid(columns: columns, spacing: 8) {
-            StatTile(label: "TOTAL", value: session.totalDuration.formattedMinutesSecondsPadded)
-            StatTile(label: "AVG SET", value: avg.formattedMinutesSecondsPadded)
-            StatTile(label: "FASTEST", value: fastest.formattedMinutesSecondsPadded)
-            if isEMOM {
-                StatTile(label: "OVERTIME", value: "\(overtimeCount)", warn: overtimeCount > 0)
-            } else {
-                StatTile(label: "SLOWEST", value: slowest.formattedMinutesSecondsPadded)
-            }
-        }
-    }
-
     // MARK: - Each set card
 
     private var eachSetCard: some View {
@@ -138,7 +114,9 @@ struct HistoryDetailView: View {
                 Eyebrow("EACH SET")
                 LazyVGrid(columns: columns, spacing: 6) {
                     ForEach(Array(times.enumerated()), id: \.offset) { index, t in
-                        SetCell(index: index, time: t, isEMOM: isEMOM)
+                        DetailCell(label: "\(isEMOM ? "M" : "R")\(String(format: "%02d", index + 1))",
+                                   value: t.formattedMinutesSecondsPadded,
+                                   warn: isEMOM && t > 60)
                     }
                 }
             }
@@ -165,19 +143,6 @@ struct HistoryDetailView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Press stats grid
-
-    private var pressStatsGrid: some View {
-        let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
-        let avgLadder = session.totalDuration / Double(max(1, session.completedLadders))
-        return LazyVGrid(columns: columns, spacing: 8) {
-            StatTile(label: "TOTAL REPS", value: "\(session.totalReps)")
-            StatTile(label: "LADDERS", value: "\(session.completedLadders)/\(session.targetLadders)")
-            StatTile(label: "TIME", value: session.totalDuration.formattedMinutesSecondsPadded)
-            StatTile(label: "AVG · LADDER", value: avgLadder.formattedMinutesSecondsPadded)
-        }
-    }
-
     // MARK: - Press ladder grid
 
     private var pressLadderGrid: some View {
@@ -187,21 +152,7 @@ struct HistoryDetailView: View {
                 Eyebrow("EACH LADDER")
                 LazyVGrid(columns: columns, spacing: 6) {
                     ForEach(Array(session.ladderReps.enumerated()), id: \.offset) { i, reps in
-                        VStack(spacing: 2) {
-                            Eyebrow(String(format: "L%02d", i + 1), size: 9)
-                            Text("\(reps)")
-                                .font(AppTypography.mono(13))
-                                .foregroundColor(AppColors.ink)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 8)
-                        .background(AppColors.surface2)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(AppColors.hairline, lineWidth: 1)
-                        )
+                        DetailCell(label: String(format: "L%02d", i + 1), value: "\(reps)")
                     }
                 }
             }
@@ -234,23 +185,21 @@ struct HistoryDetailView: View {
     }
 }
 
-// MARK: - Per-set tile
+// MARK: - Per-set / per-ladder tile
 
-/// One per-set tile (history.jsx EACH SET cell): "M01"/"R01" eyebrow + mm:ss,
-/// red when EMOM and over 60s.
-fileprivate struct SetCell: View {
-    let index: Int
-    let time: TimeInterval
-    let isEMOM: Bool
-
-    private var over: Bool { isEMOM && time > 60 }
+/// One grid tile (history.jsx EACH SET cell): "M01"/"R01"/"L01" eyebrow + value,
+/// red when `warn` (EMOM set over 60s).
+fileprivate struct DetailCell: View {
+    let label: String
+    let value: String
+    var warn: Bool = false
 
     var body: some View {
         VStack(spacing: 2) {
-            Eyebrow("\(isEMOM ? "M" : "R")\(String(format: "%02d", index + 1))", size: 9)
-            Text(time.formattedMinutesSecondsPadded)
+            Eyebrow(label, size: 9)
+            Text(value)
                 .font(AppTypography.mono(13))
-                .foregroundColor(over ? AppColors.red : AppColors.ink)
+                .foregroundColor(warn ? AppColors.red : AppColors.ink)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 6)
@@ -262,15 +211,6 @@ fileprivate struct SetCell: View {
                 .stroke(AppColors.hairline, lineWidth: 1)
         )
     }
-}
-
-// MARK: - Formatting helpers
-
-/// Full date "EEE, MMM d" (e.g. "Fri, May 22"), used uppercased in the header.
-fileprivate func fullDate(_ date: Date) -> String {
-    let f = DateFormatter()
-    f.dateFormat = "EEE, MMM d"
-    return f.string(from: date)
 }
 
 #Preview {

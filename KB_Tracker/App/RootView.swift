@@ -7,7 +7,7 @@ import SwiftUI
 
 struct RootView: View {
     @AppStorage("kb_onboarded") private var onboarded = false
-    @AppStorage("kb_pref_kbType") private var prefKBType = KBType.double.rawValue
+    @AppStorage("kb_pref_kbType") private var prefKBType = KBType.double
     @AppStorage("kb_pref_weight") private var prefWeight = 20
 
     var body: some View {
@@ -18,7 +18,7 @@ struct RootView: View {
                 }
             } else {
                 OnboardingView { kbType, weight in
-                    prefKBType = kbType.rawValue
+                    prefKBType = kbType
                     prefWeight = weight
                     withAnimation(.easeInOut(duration: 0.3)) {
                         onboarded = true
@@ -27,6 +27,6 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .tint(AppColors.accent)
+        .tint(AppColors.ink)
     }
 }

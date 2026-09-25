@@ -20,30 +20,27 @@ struct PrimaryButton: View {
     let title: String
     var background: Color = AppColors.ink
     var foreground: Color = AppColors.background
-    var enabled: Bool = true
     let action: () -> Void
 
     var body: some View {
-        Button(action: { if enabled { action() } }) {
+        Button(action: action) {
             Text(title)
                 .font(.system(size: 17, weight: .bold))
                 .kerning(17 * 0.08)
                 .textCase(.uppercase)
-                .foregroundColor(enabled ? foreground : AppColors.ink4)
+                .foregroundColor(foreground)
                 .frame(maxWidth: .infinity)
                 .frame(height: 64)
-                .background(enabled ? background : AppColors.surface3)
+                .background(background)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(TapScaleStyle())
-        .disabled(!enabled)
     }
 }
 
 /// Secondary outline button — 56pt, 16pt radius, surface fill + hairline.
 struct GhostButton: View {
     let title: String
-    var foreground: Color = AppColors.ink
     let action: () -> Void
 
     var body: some View {
@@ -52,7 +49,7 @@ struct GhostButton: View {
                 .font(.system(size: 15, weight: .semibold))
                 .kerning(15 * 0.06)
                 .textCase(.uppercase)
-                .foregroundColor(foreground)
+                .foregroundColor(AppColors.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
                 .background(AppColors.surface)

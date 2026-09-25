@@ -93,32 +93,9 @@ struct StatsView: View {
                                 StatTile(label: "HOURS", value: String(format: "%.1f", totalHours))
                             }
 
-                            // Weekly sessions
-                            VStack(alignment: .leading, spacing: 8) {
-                                Eyebrow("WEEKLY SESSIONS")
-                                SparkBars(times: volumeSeries, mode: .rounds, height: 48)
-                                weekLabels
-                            }
-                            .padding(16)
-                            .kbCard()
-
-                            // Weekly avg set time
-                            VStack(alignment: .leading, spacing: 8) {
-                                Eyebrow("WEEKLY AVG SET TIME")
-                                SparkBars(times: avgSetSeries, mode: .emom, height: 48)
-                                weekLabels
-                            }
-                            .padding(16)
-                            .kbCard()
-
-                            // Weekly total reps
-                            VStack(alignment: .leading, spacing: 8) {
-                                Eyebrow("WEEKLY REPS")
-                                SparkBars(times: repsSeries, mode: .rounds, height: 48)
-                                weekLabels
-                            }
-                            .padding(16)
-                            .kbCard()
+                            weeklyCard("WEEKLY SESSIONS", volumeSeries, mode: .rounds)
+                            weeklyCard("WEEKLY AVG SET TIME", avgSetSeries, mode: .emom)
+                            weeklyCard("WEEKLY REPS", repsSeries, mode: .rounds)
 
                             // Lifetime averages
                             HStack(spacing: 8) {
@@ -134,6 +111,17 @@ struct StatsView: View {
             }
         }
         .navigationBarHidden(true)
+    }
+
+    // Weekly bar card: title, 8 bars, week axis
+    private func weeklyCard(_ title: String, _ series: [TimeInterval], mode: WorkoutMode) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow(title)
+            SparkBars(times: series, mode: mode, height: 48)
+            weekLabels
+        }
+        .padding(16)
+        .kbCard()
     }
 
     // Week axis labels (8 columns, oldest→newest)

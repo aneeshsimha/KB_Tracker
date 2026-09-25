@@ -9,7 +9,6 @@ import SwiftData
 struct EMOMTimerView: View {
     let config: WorkoutConfig
 
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var viewModel: EMOMTimerViewModel
@@ -89,7 +88,12 @@ struct EMOMTimerView: View {
     private var content: some View {
         switch viewModel.emomPhase {
         case .getReady:
-            readyContent
+            GetReadyContent(
+                eyebrow: "EMOM · STARTING",
+                digit: max(1, viewModel.getReadyCountdown),
+                weight: config.weightDisplay,
+                detail: "\(config.targetMinutes) minutes EMOM"
+            )
         case .active:
             workContent
         case .complete:
@@ -100,33 +104,6 @@ struct EMOMTimerView: View {
                     .foregroundColor(AppColors.ink)
                     .monospacedDigit()
             }
-        }
-    }
-
-    private var readyContent: some View {
-        let digit = max(1, viewModel.getReadyCountdown)
-        return VStack(spacing: 0) {
-            Eyebrow("EMOM · STARTING", color: AppColors.ink3)
-                .padding(.bottom, 16)
-
-            Text("\(digit)")
-                .font(.system(size: 220, weight: .bold, design: .monospaced))
-                .foregroundColor(AppColors.ink)
-                .monospacedDigit()
-                .id(digit)
-                .transition(.scale(scale: 0.94).combined(with: .opacity))
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: digit)
-
-            (
-                Text("\(config.weightDisplay)")
-                    .font(AppTypography.mono(18, weight: .semibold))
-                + Text("  ·  ")
-                    .foregroundColor(AppColors.ink4)
-                + Text("\(config.targetMinutes) minutes EMOM")
-                    .font(.system(size: 14))
-            )
-            .foregroundColor(AppColors.ink2)
-            .padding(.top, 20)
         }
     }
 
@@ -161,47 +138,8 @@ struct EMOMTimerView: View {
     @ViewBuilder
     private var footer: some View {
         if viewModel.emomPhase == .active {
-            VStack(spacing: 12) {
-                Button(action: { viewModel.setDone() }) {
-                    Text("Set Done")
-                        .font(.system(size: 18, weight: .bold))
-                        .kerning(18 * 0.08)
-                        .textCase(.uppercase)
-                        .foregroundColor(isOvertime ? AppColors.ink : AppColors.background)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 76)
-                        .background(isOvertime ? AppColors.red : AppColors.ink)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-                .buttonStyle(TapScaleStyle())
-
-                if !viewModel.setTimes.isEmpty {
-                    HStack {
-                        lastAvg(label: "Last set", value: viewModel.setTimes.last ?? 0)
-                        Spacer()
-                        lastAvg(label: "Avg", value: averageSetTime)
-                    }
-                    .font(.system(size: 12))
-                    .foregroundColor(AppColors.ink3)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 24)
+            SetDoneFooter(setTimes: viewModel.setTimes, overtime: isOvertime) { viewModel.setDone() }
         }
-    }
-
-    private func lastAvg(label: String, value: TimeInterval) -> some View {
-        HStack(spacing: 6) {
-            Text("\(label):")
-            Text(value.formattedMinutesSecondsPadded)
-                .font(AppTypography.mono(12, weight: .semibold))
-                .foregroundColor(AppColors.ink2)
-        }
-    }
-
-    private var averageSetTime: TimeInterval {
-        guard !viewModel.setTimes.isEmpty else { return 0 }
-        return viewModel.setTimes.reduce(0, +) / Double(viewModel.setTimes.count)
     }
 }
 

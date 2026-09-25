@@ -9,9 +9,8 @@ import SwiftUI
 struct SetChart: View {
     let setTimes: [TimeInterval]
     let mode: WorkoutMode
-    var dense: Bool = false
 
-    private var chartHeight: CGFloat { dense ? 80 : 130 }
+    private let chartHeight: CGFloat = 130
 
     var body: some View {
         if setTimes.isEmpty {

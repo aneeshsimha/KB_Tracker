@@ -6,14 +6,10 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
-    @AppStorage("kb_pref_kbType") private var prefKBTypeRaw: String = KBType.double.rawValue
+    @AppStorage("kb_pref_kbType") private var prefKBType: KBType = .double
     @AppStorage("kb_pref_weight") private var prefWeight: Int = 20
     @AppStorage("kb_pref_sound") private var soundEnabled: Bool = true
     @AppStorage("kb_pref_getReady") private var getReadySeconds: Int = 5
-
-    private var prefKBType: KBType {
-        KBType(rawValue: prefKBTypeRaw) ?? .double
-    }
 
     var body: some View {
         ZStack {
@@ -41,10 +37,7 @@ struct SettingsView: View {
                                     SegmentedOption(label: "SINGLE", value: KBType.single),
                                     SegmentedOption(label: "DOUBLE", value: KBType.double),
                                 ],
-                                selection: Binding(
-                                    get: { prefKBType },
-                                    set: { prefKBTypeRaw = $0.rawValue }
-                                )
+                                selection: $prefKBType
                             )
                         }
 

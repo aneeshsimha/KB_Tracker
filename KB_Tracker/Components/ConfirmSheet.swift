@@ -10,8 +10,8 @@ struct ConfirmSheet: ViewModifier {
     @Binding var isPresented: Bool
     let title: String
     let message: String
-    var confirmLabel: String = "Confirm"
-    var cancelLabel: String = "Cancel"
+    let confirmLabel: String
+    let cancelLabel: String
     let onConfirm: () -> Void
 
     func body(content: Content) -> some View {
@@ -62,8 +62,8 @@ extension View {
     func confirmSheet(isPresented: Binding<Bool>,
                       title: String,
                       message: String,
-                      confirmLabel: String = "Confirm",
-                      cancelLabel: String = "Cancel",
+                      confirmLabel: String,
+                      cancelLabel: String,
                       onConfirm: @escaping () -> Void) -> some View {
         modifier(ConfirmSheet(isPresented: isPresented, title: title, message: message,
                               confirmLabel: confirmLabel, cancelLabel: cancelLabel,
