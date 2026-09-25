@@ -10,11 +10,9 @@ enum KBIcon: String {
     case close   = "xmark"
     case history = "clock.arrow.circlepath"
     case chevron = "chevron.right"
-    case check   = "checkmark"
     case plus    = "plus"
     case minus   = "minus"
     case trash   = "trash"
-    case dots    = "ellipsis"
     case share   = "square.and.arrow.up"
     case gear    = "gearshape"
     case chart   = "chart.bar"
@@ -24,15 +22,14 @@ enum KBIcon: String {
 struct IconButton: View {
     let icon: KBIcon
     var color: Color = AppColors.ink
-    var size: CGFloat = 32
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: icon.rawValue)
-                .font(.system(size: size * 0.42, weight: .semibold))
+                .font(.system(size: 32 * 0.42, weight: .semibold))
                 .foregroundColor(color)
-                .frame(width: size, height: size)
+                .frame(width: 32, height: 32)
                 .background(AppColors.surface)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(AppColors.hairline, lineWidth: 1))

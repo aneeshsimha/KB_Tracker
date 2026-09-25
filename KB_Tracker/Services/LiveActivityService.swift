@@ -48,10 +48,10 @@ final class LiveActivityService {
         }
     }
 
-    func end(phase: String, currentRound: Int, totalRounds: Int, elapsedSeconds: TimeInterval, mode: String) {
+    func end(currentRound: Int, totalRounds: Int, elapsedSeconds: TimeInterval, mode: String) {
         guard let activity else { return }
         let state = KBTimerAttributes.ContentState(
-            phase: phase,
+            phase: "complete",
             currentRound: currentRound,
             totalRounds: totalRounds,
             elapsedSeconds: elapsedSeconds,

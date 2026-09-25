@@ -21,9 +21,7 @@ class AudioService: AudioCueing {
 
     private var soundEnabled: Bool {
         // Default true if key not set
-        UserDefaults.standard.object(forKey: "kb_pref_sound") == nil
-            ? true
-            : UserDefaults.standard.bool(forKey: "kb_pref_sound")
+        UserDefaults.standard.object(forKey: "kb_pref_sound") as? Bool ?? true
     }
 
     private func configureAudioSession() {
@@ -42,32 +40,23 @@ class AudioService: AudioCueing {
         #endif
     }
 
+    // System sound IDs - using built-in iOS sounds
+
     /// Play countdown warning beep (softer, shorter)
     func playCountdownBeep() {
         guard soundEnabled else { return }
-        playSystemSound(.tock)
+        AudioServicesPlaySystemSound(1104)  // Soft tick
     }
 
     /// Play GO beep (louder, more prominent)
     func playGoBeep() {
         guard soundEnabled else { return }
-        playSystemSound(.tink)
+        AudioServicesPlaySystemSound(1103)  // Metallic ping
     }
 
     /// Play completion sound (workout finished)
     func playCompletionSound() {
         guard soundEnabled else { return }
-        playSystemSound(.fanfare)
+        AudioServicesPlaySystemSound(1025)  // Completion sound
     }
-
-    private func playSystemSound(_ sound: SystemSound) {
-        AudioServicesPlaySystemSound(sound.rawValue)
-    }
-}
-
-// System sound IDs - using built-in iOS sounds
-enum SystemSound: SystemSoundID {
-    case tock = 1104      // Soft tick
-    case tink = 1103      // Metallic ping
-    case fanfare = 1025   // Completion sound
 }

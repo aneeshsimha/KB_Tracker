@@ -17,6 +17,11 @@ enum WorkoutMode: String, Codable {
 enum KBType: String, Codable {
     case single    // Single kettlebell
     case double    // Double kettlebells (2x)
+
+    /// Display string for a weight (e.g., "2×20kg" or "20kg")
+    func weightDisplay(_ weight: Int) -> String {
+        self == .double ? "2×\(weight)kg" : "\(weight)kg"
+    }
 }
 
 /// Which workout this session is: the ABC complex or the press ladder.

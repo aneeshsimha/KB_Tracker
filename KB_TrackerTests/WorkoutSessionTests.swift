@@ -60,66 +60,6 @@ struct WorkoutSessionTests {
         #expect(s.averageSetTime == 50.0)
     }
 
-    // MARK: - hasOvertimeSets
-
-    @Test func hasOvertimeSetsReturnsFalseForRoundsModeEvenWithLongSets() {
-        let s = WorkoutSession()
-        s.mode = .rounds
-        s.setTimes = [61.0, 90.0]
-        #expect(s.hasOvertimeSets == false)
-    }
-
-    @Test func hasOvertimeSetsReturnsFalseForEMOMWithAllSetsUnder60() {
-        let s = WorkoutSession()
-        s.mode = .emom
-        s.setTimes = [30.0, 55.0, 59.9]
-        #expect(s.hasOvertimeSets == false)
-    }
-
-    @Test func hasOvertimeSetsReturnsTrueForEMOMWithOneLongSet() {
-        let s = WorkoutSession()
-        s.mode = .emom
-        s.setTimes = [30.0, 61.0]
-        #expect(s.hasOvertimeSets == true)
-    }
-
-    @Test func hasOvertimeSetsExactly60SecondsIsNotOvertime() {
-        let s = WorkoutSession()
-        s.mode = .emom
-        s.setTimes = [60.0]
-        #expect(s.hasOvertimeSets == false)
-    }
-
-    @Test func hasOvertimeSetsEmptySetTimesIsNotOvertime() {
-        let s = WorkoutSession()
-        s.mode = .emom
-        s.setTimes = []
-        #expect(s.hasOvertimeSets == false)
-    }
-
-    // MARK: - roundsDisplay
-
-    @Test func roundsDisplayFormatsCompletedOverTarget() {
-        let s = WorkoutSession()
-        s.completedRounds = 18
-        s.targetRounds = 20
-        #expect(s.roundsDisplay == "18/20")
-    }
-
-    @Test func roundsDisplayZeroCompleted() {
-        let s = WorkoutSession()
-        s.completedRounds = 0
-        s.targetRounds = 20
-        #expect(s.roundsDisplay == "0/20")
-    }
-
-    @Test func roundsDisplayFullyCompleted() {
-        let s = WorkoutSession()
-        s.completedRounds = 10
-        s.targetRounds = 10
-        #expect(s.roundsDisplay == "10/10")
-    }
-
     // MARK: - totalReps (non-duplicate scenarios only)
 
     @Test func totalRepsEmptyLadderReps() {

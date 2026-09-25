@@ -89,20 +89,7 @@ struct PressLadderView: View {
 
     private var header: some View {
         HStack {
-            Button { showEndConfirm = true } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: KBIcon.close.rawValue)
-                    Text("END")
-                }
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(AppColors.ink2)
-                .padding(.horizontal, 12)
-                .frame(height: 32)
-                .background(AppColors.surface)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(AppColors.hairline, lineWidth: 1))
-            }
-            .buttonStyle(TapScaleStyle())
+            EndPill { showEndConfirm = true }
 
             Spacer()
             Eyebrow("PRESS LADDER")

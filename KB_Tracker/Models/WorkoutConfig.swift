@@ -40,13 +40,21 @@ struct WorkoutConfig {
                       weight: weight, targetRounds: rounds, restDuration: restSeconds, targetLadders: 0)
     }
 
-    var weightDisplay: String {
-        switch kettlebellType {
-        case .single: return "\(weight)kg"
-        case .double: return "2×\(weight)kg"
-        }
-    }
+    var weightDisplay: String { kettlebellType.weightDisplay(weight) }
 
     // EMOM-only semantic accessor — targetRounds stores minutes for EMOM configs.
     var targetMinutes: Int { targetRounds }
+
+    /// Session record for an EMOM/Rounds workout run with this config.
+    func makeSession(completedRounds: Int, totalDuration: TimeInterval,
+                     setTimes: [TimeInterval], isCompleted: Bool) -> WorkoutSession {
+        let session = WorkoutSession(mode: mode, kettlebellType: kettlebellType, weight: weight,
+                                     targetRounds: targetRounds, restDuration: restDuration)
+        session.workoutType = workoutType
+        session.completedRounds = completedRounds
+        session.totalDuration = totalDuration
+        session.setTimes = setTimes
+        session.isCompleted = isCompleted
+        return session
+    }
 }

@@ -175,50 +175,22 @@ final class EMOMTimerViewModel: ObservableObject {
         audio.playCompletionSound()
         stop()
         LiveActivityService.shared.end(
-            phase: "complete", currentRound: currentRound,
+            currentRound: currentRound,
             totalRounds: config.targetMinutes, elapsedSeconds: totalElapsed,
             mode: config.mode.rawValue
         )
-        createCompletedSession()
-    }
-
-    private func createCompletedSession() {
-        let session = WorkoutSession(
-            mode: config.mode,
-            kettlebellType: config.kettlebellType,
-            weight: config.weight,
-            targetRounds: config.targetRounds,
-            restDuration: config.restDuration
-        )
-        session.workoutType = config.workoutType
-        session.completedRounds = currentRound
-        session.totalDuration = totalElapsed
-        session.setTimes = setTimes
-        session.isCompleted = true
-        completedSession = session
+        completedSession = config.makeSession(completedRounds: currentRound, totalDuration: totalElapsed,
+                                              setTimes: setTimes, isCompleted: true)
     }
 
     func savePartialWorkout() {
         stop()
         LiveActivityService.shared.end(
-            phase: "complete", currentRound: currentRound,
+            currentRound: currentRound,
             totalRounds: config.targetMinutes, elapsedSeconds: totalElapsed,
             mode: config.mode.rawValue
         )
-
-        let session = WorkoutSession(
-            mode: config.mode,
-            kettlebellType: config.kettlebellType,
-            weight: config.weight,
-            targetRounds: config.targetRounds,
-            restDuration: config.restDuration
-        )
-        session.workoutType = config.workoutType
-        session.completedRounds = currentRound
-        session.totalDuration = totalElapsed
-        session.setTimes = setTimes
-        session.isCompleted = false
-
-        partialSession = session
+        partialSession = config.makeSession(completedRounds: currentRound, totalDuration: totalElapsed,
+                                            setTimes: setTimes, isCompleted: false)
     }
 }

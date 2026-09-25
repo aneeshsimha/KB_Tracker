@@ -27,18 +27,7 @@ struct WorkoutCompleteView: View {
         _notes = State(initialValue: session.notes ?? "")
     }
 
-    // MARK: - Derived stats
-
-    private var times: [TimeInterval] { session.setTimes }
     private var isEMOM: Bool { session.mode == .emom }
-
-    private var fastest: TimeInterval { times.min() ?? 0 }
-    private var slowest: TimeInterval { times.max() ?? 0 }
-    private var overtimeCount: Int { isEMOM ? times.filter { $0 > 60 }.count : 0 }
-
-    private var weightPhrase: String {
-        session.kettlebellType == .double ? "2×\(session.weight)kg" : "\(session.weight)kg"
-    }
 
     var body: some View {
         ZStack {
@@ -50,11 +39,11 @@ struct WorkoutCompleteView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         if session.workoutType == .press {
                             pressHero
-                            pressStatsGrid
+                            SessionStatsGrid(session: session)
                             pressLadderChart
                         } else {
                             hero
-                            statsGrid
+                            SessionStatsGrid(session: session)
                             SetChart(setTimes: session.setTimes, mode: session.mode)
                         }
                         notesCard
@@ -98,7 +87,7 @@ struct WorkoutCompleteView: View {
 
             Spacer()
 
-            Eyebrow("SESSION · \(session.date.kbDateShort.uppercased())")
+            Eyebrow("SESSION · \(session.date.formatted(.dateTime.month(.abbreviated).day()).uppercased())")
 
             Spacer()
 
@@ -119,7 +108,7 @@ struct WorkoutCompleteView: View {
             (
                 Text("\(session.completedRounds) \(isEMOM ? "minutes" : "rounds")\n")
                     .foregroundColor(AppColors.ink)
-                + Text("at \(weightPhrase).")
+                + Text("at \(session.weightDisplay).")
                     .foregroundColor(AppColors.ink3)
             )
             .font(.system(size: 36, weight: .heavy))
@@ -177,7 +166,7 @@ struct WorkoutCompleteView: View {
                 .padding(.bottom, 8)
             (
                 Text("\(session.totalReps) presses\n").foregroundColor(AppColors.ink)
-                + Text("at \(weightPhrase).").foregroundColor(AppColors.ink3)
+                + Text("at \(session.weightDisplay).").foregroundColor(AppColors.ink3)
             )
             .font(.system(size: 36, weight: .heavy))
             .kerning(-0.8)
@@ -189,18 +178,6 @@ struct WorkoutCompleteView: View {
                 .foregroundColor(AppColors.ink2)
         }
         .padding(.vertical, 6)
-    }
-
-    private var pressStatsGrid: some View {
-        let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
-        let avgLadder = session.completedLadders > 0
-            ? session.totalDuration / Double(session.completedLadders) : 0
-        return LazyVGrid(columns: columns, spacing: 10) {
-            StatTile(label: "TOTAL REPS", value: "\(session.totalReps)")
-            StatTile(label: "LADDERS", value: "\(session.completedLadders)/\(session.targetLadders)")
-            StatTile(label: "TIME", value: session.totalDuration.formattedMinutesSecondsPadded)
-            StatTile(label: "AVG · LADDER", value: avgLadder.formattedMinutesSecondsPadded)
-        }
     }
 
     private var pressLadderChart: some View {
@@ -221,22 +198,6 @@ struct WorkoutCompleteView: View {
                     }
                 }
                 .frame(height: 110, alignment: .bottom)
-            }
-        }
-    }
-
-    // MARK: - Stats grid
-
-    private var statsGrid: some View {
-        let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
-        return LazyVGrid(columns: columns, spacing: 10) {
-            StatTile(label: "TOTAL", value: session.totalDuration.formattedMinutesSecondsPadded)
-            StatTile(label: "AVG SET", value: (session.averageSetTime ?? 0).formattedMinutesSecondsPadded)
-            StatTile(label: "FASTEST", value: fastest.formattedMinutesSecondsPadded)
-            if isEMOM {
-                StatTile(label: "OVERTIME", value: "\(overtimeCount)", warn: overtimeCount > 0)
-            } else {
-                StatTile(label: "SLOWEST", value: slowest.formattedMinutesSecondsPadded)
             }
         }
     }
@@ -304,15 +265,6 @@ struct WorkoutCompleteView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             onSaveComplete?()
         }
-    }
-}
-
-private extension Date {
-    /// Short date "MMM d" (e.g. "May 22"), used uppercased in the eyebrow.
-    var kbDateShort: String {
-        let f = DateFormatter()
-        f.dateFormat = "MMM d"
-        return f.string(from: self)
     }
 }
 

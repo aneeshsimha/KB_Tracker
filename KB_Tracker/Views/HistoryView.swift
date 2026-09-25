@@ -196,9 +196,7 @@ fileprivate struct WeekStrip: View {
 fileprivate struct SessionRow: View {
     let session: WorkoutSession
 
-    private var weightPhrase: String {
-        session.kettlebellType == .double ? "2×\(session.weight)kg" : "\(session.weight)kg"
-    }
+    private var isPress: Bool { session.workoutType == .press }
 
     private var workoutTitle: String {
         switch session.workoutType {
@@ -213,9 +211,9 @@ fileprivate struct SessionRow: View {
         HStack(spacing: 14) {
             // date block
             VStack(spacing: 2) {
-                Text(dayOfMonth(session.date))
+                Text(session.date.formatted(.dateTime.day()))
                     .font(AppTypography.mono(22))
-                Eyebrow(shortMonth(session.date), size: 9)
+                Eyebrow(session.date.formatted(.dateTime.month(.abbreviated)), size: 9)
             }
             .frame(width: 36)
             .padding(.trailing, 14)
@@ -223,78 +221,41 @@ fileprivate struct SessionRow: View {
                 Rectangle().fill(AppColors.hairline).frame(width: 1)
             }
 
-            // main
-            if session.workoutType == .press {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("Press")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(AppColors.ink)
-                        Text(session.weightDisplay)
-                            .font(AppTypography.mono(13, weight: .semibold))
-                            .foregroundColor(AppColors.ink3)
-                    }
-                    HStack(spacing: 0) {
-                        Text("\(session.totalReps)")
-                            .font(AppTypography.mono(12.5, weight: .semibold))
-                            .foregroundColor(AppColors.ink2)
-                        Text(" reps")
-                            .font(.system(size: 12.5))
-                            .foregroundColor(AppColors.ink4)
-                        Text("  ·  ")
-                            .font(.system(size: 12.5))
-                            .foregroundColor(AppColors.ink4)
-                        Text("\(session.completedLadders) ladders")
-                            .font(AppTypography.mono(12.5, weight: .regular))
-                            .foregroundColor(AppColors.ink2)
-                    }
+            // main — press: reps · ladders; otherwise: done/target · duration
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(workoutTitle)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.ink)
+                    Text(session.weightDisplay)
+                        .font(AppTypography.mono(13, weight: .semibold))
+                        .foregroundColor(AppColors.ink3)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(workoutTitle)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(AppColors.ink)
-                        Text(weightPhrase)
-                            .font(AppTypography.mono(13, weight: .semibold))
-                            .foregroundColor(AppColors.ink3)
-                    }
-                    HStack(spacing: 0) {
-                        Text("\(session.completedRounds)")
-                            .font(AppTypography.mono(12.5, weight: .semibold))
-                            .foregroundColor(AppColors.ink2)
-                        Text("/\(session.mode == .emom ? session.targetMinutes : session.targetRounds)")
-                            .font(.system(size: 12.5))
-                            .foregroundColor(AppColors.ink4)
-                        Text("  ·  ")
-                            .font(.system(size: 12.5))
-                            .foregroundColor(AppColors.ink4)
-                        Text(session.totalDuration.formattedMinutesSecondsPadded)
-                            .font(AppTypography.mono(12.5, weight: .regular))
-                            .foregroundColor(AppColors.ink2)
-                    }
+                HStack(spacing: 0) {
+                    Text("\(isPress ? session.totalReps : session.completedRounds)")
+                        .font(AppTypography.mono(12.5, weight: .semibold))
+                        .foregroundColor(AppColors.ink2)
+                    Text(isPress ? " reps" : "/\(session.targetRounds)")
+                        .font(.system(size: 12.5))
+                        .foregroundColor(AppColors.ink4)
+                    Text("  ·  ")
+                        .font(.system(size: 12.5))
+                        .foregroundColor(AppColors.ink4)
+                    Text(isPress ? "\(session.completedLadders) ladders" : session.totalDuration.formattedMinutesSecondsPadded)
+                        .font(AppTypography.mono(12.5, weight: .regular))
+                        .foregroundColor(AppColors.ink2)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             // micro spark
-            if session.workoutType == .press {
-                if !session.ladderReps.isEmpty {
-                    SparkBars(times: session.ladderReps.map { TimeInterval($0) },
-                              mode: .rounds,
-                              height: 20,
-                              limit: 20)
-                        .frame(width: 60)
-                }
-            } else {
-                if !session.setTimes.isEmpty {
-                    SparkBars(times: session.setTimes,
-                              mode: session.mode,
-                              height: 20,
-                              limit: 20)
-                        .frame(width: 60)
-                }
+            let sparkTimes = isPress ? session.ladderReps.map { TimeInterval($0) } : session.setTimes
+            if !sparkTimes.isEmpty {
+                SparkBars(times: sparkTimes,
+                          mode: isPress ? .rounds : session.mode,
+                          height: 20,
+                          limit: 20)
+                    .frame(width: 60)
             }
 
             Image(systemName: "chevron.right")
@@ -351,16 +312,6 @@ fileprivate func weekStripBuckets(_ sessions: [WorkoutSession]) -> [Int] {
         }
     }
     return buckets
-}
-
-fileprivate func dayOfMonth(_ date: Date) -> String {
-    "\(Calendar.current.component(.day, from: date))"
-}
-
-fileprivate func shortMonth(_ date: Date) -> String {
-    let f = DateFormatter()
-    f.dateFormat = "MMM"
-    return f.string(from: date)
 }
 
 #Preview {

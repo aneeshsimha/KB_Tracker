@@ -1,5 +1,5 @@
 // KBTimerAttributes.swift
-// KB_Tracker (app target)
+// KB_Tracker — compiled into both the app and widget targets
 
 import ActivityKit
 import Foundation

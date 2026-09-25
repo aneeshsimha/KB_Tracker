@@ -152,11 +152,12 @@ final class RoundsTimerViewModel: ObservableObject {
             audio.playCompletionSound()
             stop()
             LiveActivityService.shared.end(
-                phase: "complete", currentRound: currentRound,
+                currentRound: currentRound,
                 totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
                 mode: config.mode.rawValue
             )
-            createCompletedSession()
+            completedSession = config.makeSession(completedRounds: currentRound, totalDuration: totalElapsed,
+                                                  setTimes: setTimes, isCompleted: true)
         } else {
             roundsPhase = .resting
             restCountdown = config.restDuration ?? 60
@@ -193,43 +194,14 @@ final class RoundsTimerViewModel: ObservableObject {
 
     // MARK: - Workout Completion
 
-    private func createCompletedSession() {
-        let session = WorkoutSession(
-            mode: config.mode,
-            kettlebellType: config.kettlebellType,
-            weight: config.weight,
-            targetRounds: config.targetRounds,
-            restDuration: config.restDuration
-        )
-        session.workoutType = config.workoutType
-        session.completedRounds = currentRound
-        session.totalDuration = totalElapsed
-        session.setTimes = setTimes
-        session.isCompleted = true
-        completedSession = session
-    }
-
     func savePartialWorkout() {
         stop()
         LiveActivityService.shared.end(
-            phase: "complete", currentRound: currentRound,
+            currentRound: currentRound,
             totalRounds: config.targetRounds, elapsedSeconds: totalElapsed,
             mode: config.mode.rawValue
         )
-
-        let session = WorkoutSession(
-            mode: config.mode,
-            kettlebellType: config.kettlebellType,
-            weight: config.weight,
-            targetRounds: config.targetRounds,
-            restDuration: config.restDuration
-        )
-        session.workoutType = config.workoutType
-        session.completedRounds = currentRound
-        session.totalDuration = totalElapsed
-        session.setTimes = setTimes
-        session.isCompleted = false
-
-        partialSession = session
+        partialSession = config.makeSession(completedRounds: currentRound, totalDuration: totalElapsed,
+                                            setTimes: setTimes, isCompleted: false)
     }
 }
