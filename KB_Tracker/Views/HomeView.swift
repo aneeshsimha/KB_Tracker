@@ -1,446 +1,221 @@
-// HomeView.swift
-// KB_Tracker
-//
-// Home / workout setup screen. Ported from home.jsx — gravl-style layout
-// with big mono numerals as the focal point, supporting controls reduced to
-// small text + ± steppers.
-
 import SwiftUI
 import SwiftData
+import CoreData
 
 struct HomeView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
-
-    @State private var mode: WorkoutMode = .emom
-    @State private var kettlebellType: KBType = .double
-    @State private var weight: Int = 20
-    @State private var targetMinutes: Int = 20       // EMOM
-    @State private var targetRounds: Int = 15        // Rounds mode
-    @State private var restDuration: Int = 60        // Rounds mode
-
-    @AppStorage("kb_pref_kbType") private var prefKBType: KBType = .double
-    @AppStorage("kb_pref_weight") private var prefWeight: Int = 20
-
+    @Query(sort: \WorkoutTemplate.modifiedAt, order: .reverse) private var templates: [WorkoutTemplate]
+    @Query private var programs: [TrainingProgram]
+    @AppStorage("kb_weight_unit") private var unit: WeightUnit = .kg
+    @State private var selection: WorkoutType = .abc
+    @State private var definition = WorkoutDefinition.builtIn(.emom(kettlebellType: .double, weight: 20, minutes: 20))
     @State private var route: HomeRoute?
-    @State private var showSettings = false
-    @State private var workoutType: WorkoutType = .abc
-    @State private var targetLadders: Int = 5        // press
-
-    private var lastSession: WorkoutSession? {
-        sessions.first(where: { $0.isCompleted })
-    }
+    @State private var editing = false
+    @State private var settings = false
+    @State private var active: ActiveWorkoutSnapshot?
+    @State private var message: String?
+    @State private var loaded = false
 
     var body: some View {
-        ZStack {
-            AppColors.background.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                header
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // Last-session card (or first-time prompt)
-                        if let last = lastSession {
-                            lastSessionCard(session: last)
-                        } else {
-                            firstTimeCard
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack {
+                    Eyebrow("KB · TRACKER")
+                    Spacer()
+                    Button { route = .stats } label: { Image(systemName: "chart.bar") }.accessibilityLabel("Statistics")
+                    Button { route = .history } label: { Image(systemName: "clock.arrow.circlepath") }.accessibilityLabel("Workout history")
+                    Button { settings = true } label: { Image(systemName: "gearshape") }.accessibilityLabel("Settings")
+                }
+                .buttonStyle(.bordered)
+                if active != nil {
+                    Button { route = .recovery } label: {
+                        Label("Resume your workout", systemImage: "play.circle.fill")
+                            .frame(maxWidth: .infinity, alignment: .leading).padding()
+                    }.kbCard()
+                }
+                if let program = programs.filter(\.isActive).sorted(by: { $0.modifiedAt > $1.modifiedAt }).first {
+                    let next = ProgramService.nextDefinition(program: program)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Eyebrow("UP NEXT")
+                        Text(next.name).font(.title2.bold())
+                        HStack {
+                            Button("Start planned workout") { launch(next, programID: program.id) }
+                            Spacer()
+                            Button("View plan") { route = .program }
                         }
-
-                        setupBlock
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 6)
-                    .padding(.bottom, 20)
+                    }.padding().kbCard()
                 }
-
-                // Footer: start
-                PrimaryButton(title: startTitle) {
-                    switch workoutType {
-                    case .abc:           route = mode == .emom ? .emom : .rounds
-                    case .press:         route = .press
-                    case .snatchTest:    route = .emom
-                    case .swingInterval: route = .rounds
+                HStack {
+                    Button { route = .library } label: { Label("Workouts", systemImage: "square.stack") }
+                    Spacer()
+                    Button { route = .program } label: { Label("Program", systemImage: "calendar") }
+                }.buttonStyle(.bordered)
+                if let last = sessions.first {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Eyebrow("LAST SESSION")
+                        Text(last.displayTitle).font(.title3.bold())
+                        Text("\(last.workSets) sets · \(last.recordedReps.map { "\($0) reps" } ?? "Reps not recorded")")
+                            .foregroundStyle(AppColors.ink2)
+                        HStack {
+                            Text(last.date, style: .date).font(.caption)
+                            Spacer()
+                            Button("Repeat") { definition = last.repeatDefinition; editing = true }
+                        }
+                    }.padding().kbCard()
+                }
+                Picker("Workout", selection: $selection) {
+                    ForEach(WorkoutType.allCases.filter { $0 != .custom }) { type in
+                        Text(type.title).tag(type)
+                    }
+                }.pickerStyle(.segmented)
+                if let block = definition.blocks.first {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text(definition.name).font(.title2.bold())
+                            Spacer()
+                            Button("Edit") { editing = true }
+                        }
+                        Text(unit.label(block.loadKg, bells: block.bells))
+                            .font(AppTypography.mono(42, weight: .bold))
+                            .minimumScaleFactor(0.6)
+                        HStack {
+                            Text(block.kind == .ladder ? "\(block.rounds) ladders" : "\(block.rounds) \(block.kind == .emom ? "minutes" : "rounds")")
+                            Spacer()
+                            Button { changeTarget(-1) } label: { Image(systemName: "minus.circle") }.accessibilityLabel("Decrease target")
+                            Button { changeTarget(1) } label: { Image(systemName: "plus.circle") }.accessibilityLabel("Increase target")
+                        }.font(.title3)
+                        Text(block.movements.map { movement in
+                            "\(movement.reps.map { "\($0) " } ?? "")\(movement.name)\(movement.perSide ? " each side" : "")"
+                        }.joined(separator: " · ")).foregroundStyle(AppColors.ink2)
+                        if definition.blocks.count > 1 { Text("\(definition.blocks.count) blocks").font(.caption) }
+                    }.padding(20).kbCard()
+                }
+                PrimaryButton(title: "Start workout") { launch(definition) }
+                Button("Save as preset") {
+                    var copy = definition
+                    copy.id = UUID()
+                    context.insert(WorkoutTemplate(definition: copy, isFavorite: true))
+                    do { try context.save(); WidgetSnapshotService.refresh(context: context); message = "Saved to Workouts." }
+                    catch { message = error.localizedDescription }
+                }.frame(maxWidth: .infinity)
+                if !templates.filter(\.isFavorite).isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Eyebrow("FAVORITES")
+                        ForEach(templates.filter(\.isFavorite)) { template in
+                            Button {
+                                if let saved = template.definition { launch(saved) }
+                            } label: {
+                                HStack { Text(template.name); Spacer(); Image(systemName: "play.fill") }.padding()
+                            }.kbCard()
+                        }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-                .padding(.bottom, 20)
-            }
+            }.padding(20)
         }
-        .navigationDestination(item: $route) { dest in
-            switch dest {
-            case .emom:
-                let emomConfig: WorkoutConfig = workoutType == .snatchTest
-                    ? .snatchTest(kettlebellType: kettlebellType, weight: weight, minutes: targetMinutes)
-                    : .emom(kettlebellType: kettlebellType, weight: weight, minutes: targetMinutes)
-                EMOMTimerView(config: emomConfig)
-            case .rounds:
-                let roundsConfig: WorkoutConfig = workoutType == .swingInterval
-                    ? .swingInterval(kettlebellType: kettlebellType, weight: weight, rounds: targetRounds, restSeconds: restDuration)
-                    : .rounds(kettlebellType: kettlebellType, weight: weight, rounds: targetRounds, restSeconds: restDuration)
-                RoundsTimerView(config: roundsConfig)
-            case .press:
-                PressLadderView(
-                    config: .press(
-                        kettlebellType: kettlebellType,
-                        weight: weight,
-                        targetLadders: targetLadders
-                    )
-                )
-            case .history:
-                HistoryView()
-            case .stats:
-                StatsView()
-            }
-        }
-        .onAppear {
-            prefillFromLastSession()
-        }
-        .onChange(of: mode) { _, newValue in
-            // Sync rounds with EMOM minutes when switching to ROUNDS mode
-            if newValue == .rounds {
-                targetRounds = targetMinutes
-            }
-        }
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .background(AppColors.background.ignoresSafeArea())
+        .foregroundStyle(AppColors.ink)
         .navigationBarHidden(true)
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            Eyebrow("KB · TRACKER")
-            Spacer()
-            HStack(spacing: 8) {
-                    IconButton(icon: .chart) { route = .stats }
-                    IconButton(icon: .gear) { showSettings = true }
-                    IconButton(icon: .history) { route = .history }
-                }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 14)
-        .padding(.bottom, 8)
-    }
-
-    // MARK: - Setup block
-
-    private var setupBlock: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Eyebrow("WORKOUT")
-                .padding(.bottom, 8)
-            SegmentedToggle(
-                options: [
-                    SegmentedOption(label: "ABC", value: WorkoutType.abc),
-                    SegmentedOption(label: "Snatch", value: WorkoutType.snatchTest),
-                    SegmentedOption(label: "Swing", value: WorkoutType.swingInterval),
-                    SegmentedOption(label: "Press", value: WorkoutType.press),
-                ],
-                selection: $workoutType
-            )
-            .padding(.bottom, 22)
-
-            switch workoutType {
-            case .abc:           abcSetup
-            case .snatchTest:    snatchSetup
-            case .swingInterval: swingSetup
-            case .press:         pressSetup
+        .navigationDestination(item: $route) { target in
+            switch target {
+            case .workout(let definition, let programID): WorkoutRunnerView(definition: definition, programID: programID)
+            case .recovery:
+                if let active { WorkoutRunnerView(snapshot: active) }
+                else { Text("No active workout") }
+            case .history: HistoryView()
+            case .stats: StatsView()
+            case .library: WorkoutLibraryView()
+            case .program: ProgramView()
             }
         }
-        .padding(.top, 16)
-    }
-
-    private var abcSetup: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Eyebrow("MODE").padding(.bottom, 8)
-            SegmentedToggle(
-                options: [
-                    SegmentedOption(label: "EMOM", value: WorkoutMode.emom),
-                    SegmentedOption(label: "Rounds", value: WorkoutMode.rounds),
-                ],
-                selection: $mode
-            )
-            .padding(.bottom, 22)
-
-            loadDial()
-            Spacer().frame(height: 14)
-            if mode == .emom {
-                minutesDial(showTotal: true)
-            } else {
-                roundsDial
-            }
-        }
-    }
-
-    private var snatchSetup: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            loadDial(kbToggle: false)
-            Spacer().frame(height: 14)
-            minutesDial(showTotal: false)
-        }
-    }
-
-    private var swingSetup: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            loadDial()
-            Spacer().frame(height: 14)
-            roundsDial
-        }
-    }
-
-    private var pressSetup: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Dial(
-                eyebrow: "LADDERS",
-                value: "\(targetLadders)",
-                unit: "× 2·3·5·10",
-                onMinus: { targetLadders = max(WorkoutParameters.laddersMin, targetLadders - 1) },
-                onPlus: { targetLadders = min(WorkoutParameters.laddersMax, targetLadders + 1) }
-            ) {
-                dialTotal("Total reps", "\(targetLadders * 20)")
-            }
-
-            Spacer().frame(height: 14)
-
-            loadDial()
-        }
-    }
-
-    /// LOAD dial; with `kbToggle` it also shows the Single/Double footer.
-    private func loadDial(kbToggle: Bool = true) -> some View {
-        Dial(
-            eyebrow: "LOAD",
-            value: "\(weight)",
-            unit: kbToggle && kettlebellType == .double ? "kg × 2" : "kg",
-            onMinus: { stepWeight(-1) },
-            onPlus: { stepWeight(+1) }
-        ) {
-            if kbToggle {
-                SegmentedToggle(
-                    options: [
-                        SegmentedOption(label: "Single", value: KBType.single),
-                        SegmentedOption(label: "Double", value: KBType.double),
-                    ],
-                    selection: $kettlebellType,
-                    inline: true
-                )
-                .padding(.top, 2)
-            }
-        }
-    }
-
-    private func minutesDial(showTotal: Bool) -> some View {
-        Dial(
-            eyebrow: "DURATION",
-            value: "\(targetMinutes)",
-            unit: "min",
-            onMinus: { stepMinutes(-1) },
-            onPlus: { stepMinutes(+1) }
-        ) {
-            if showTotal {
-                dialTotal("Total work", (targetMinutes * 60).formattedMinutesSecondsPadded)
-            }
-        }
-    }
-
-    private var roundsDial: some View {
-        Dial(
-            eyebrow: "ROUNDS",
-            value: "\(targetRounds)",
-            unit: "rds",
-            onMinus: { stepRounds(-1) },
-            onPlus: { stepRounds(+1) }
-        ) {
-            dialFooter {
-                HStack {
-                    Eyebrow("REST")
-                    Spacer()
-                    HStack(spacing: 10) {
-                        StepperButton(icon: .minus) { stepRest(-1) }
-                        Text(restDuration.formattedMinutesSecondsPadded)
-                            .font(AppTypography.mono(17, weight: .bold))
-                            .foregroundColor(AppColors.ink)
-                            .frame(minWidth: 56)
-                            .multilineTextAlignment(.center)
-                        StepperButton(icon: .plus) { stepRest(+1) }
-                    }
+        .sheet(isPresented: $editing) {
+            NavigationStack {
+                WorkoutEditorView(definition: definition) { updated in
+                    definition = updated
+                    remember()
+                    editing = false
                 }
             }
         }
-    }
-
-    /// "Total …" readout row used as a dial footer.
-    private func dialTotal(_ label: String, _ value: String) -> some View {
-        dialFooter {
-            HStack {
-                Text(label)
-                    .font(.system(size: 12))
-                    .foregroundColor(AppColors.ink3)
-                Spacer()
-                Text(value)
-                    .font(AppTypography.mono(12, weight: .regular))
-                    .foregroundColor(AppColors.ink3)
+        .sheet(isPresented: $settings) { NavigationStack { SettingsView() } }
+        .alert("KB Tracker", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button("OK", role: .cancel) { message = nil }
+        } message: { Text(message ?? "") }
+        .onAppear {
+            if !loaded { restoreSelection(); loaded = true }
+            refresh()
+            handlePendingLaunch()
+        }
+        .onChange(of: selection) { old, _ in remember(for: old); restoreSelection() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refresh(); handlePendingLaunch() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in refresh() }
+        .onOpenURL { url in
+            guard url.scheme == "kbtracker" else { return }
+            switch url.host {
+            case "next": handle(.init(action: .next))
+            case "repeat": handle(.init(action: .repeatLast))
+            case "preset": handle(.init(action: .preset, presetID: url.lastPathComponent))
+            default: break
             }
         }
     }
-
-    /// Dial footer row with a hairline divider above it.
-    private func dialFooter<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        content()
-            .padding(.top, 8)
-            .padding(.horizontal, 4)
-            .overlay(alignment: .top) {
-                Rectangle().fill(AppColors.hairline).frame(height: 1)
-            }
-            .padding(.top, 4)
+    private func changeTarget(_ delta: Int) {
+        guard !definition.blocks.isEmpty else { return }
+        definition.blocks[0].rounds = min(500, max(1, definition.blocks[0].rounds + delta))
+        remember()
     }
-
-    private var startTitle: String {
-        switch workoutType {
-        case .abc:           return mode == .emom ? "Start · \(targetMinutes) min" : "Start · \(targetRounds) rounds"
-        case .press:         return "Start · \(targetLadders) ladders"
-        case .snatchTest:    return "Start · \(targetMinutes) min"
-        case .swingInterval: return "Start · \(targetRounds) rounds"
-        }
+    private func remember(for type: WorkoutType? = nil) {
+        if let data = try? JSONEncoder().encode(definition) { UserDefaults.standard.set(data, forKey: "kb-setup-\((type ?? selection).rawValue)") }
     }
-
-    // MARK: - Last-session card
-
-    private func lastSessionCard(session: WorkoutSession) -> some View {
-        Button {
-            route = .history
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Eyebrow("LAST SESSION · \(relativeDay(session.date).uppercased())")
-                    Spacer()
-                    Image(systemName: KBIcon.chevron.rawValue)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(AppColors.ink4)
-                }
-                .padding(.bottom, 10)
-
-                HStack(alignment: .firstTextBaseline, spacing: 14) {
-                    HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        Text("\(session.completedRounds)")
-                            .font(AppTypography.mono(38, weight: .bold))
-                            .foregroundColor(AppColors.ink)
-                        Text("/\(session.targetRounds)")
-                            .font(AppTypography.mono(38, weight: .medium))
-                            .foregroundColor(AppColors.ink3)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(session.mode == .emom ? "EMOM" : "Rounds") · \(session.weightDisplay)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(AppColors.ink)
-                        Text("\(Int(session.totalDuration).formattedMinutesSecondsPadded) total")
-                            .font(.system(size: 13))
-                            .foregroundColor(AppColors.ink3)
-                    }
-                }
-
-                if !session.setTimes.isEmpty {
-                    SparkBars(times: session.setTimes, mode: session.mode)
-                        .padding(.top, 12)
-                }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .kbCard()
-        }
-        .buttonStyle(TapScaleStyle())
-    }
-
-    // MARK: - First-time card
-
-    private var firstTimeCard: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(AppColors.surface2)
-                    .overlay(Circle().stroke(AppColors.hairline, lineWidth: 1))
-                KettlebellGlyph(size: 26)
-            }
-            .frame(width: 44, height: 44)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Eyebrow("FIRST SESSION")
-                Text("Pick your kit, your clock, your target. Then move.")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.ink2)
-                    .lineSpacing(14 * 0.35)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .kbCard()
-    }
-
-    // MARK: - Steppers
-
-    private func stepWeight(_ d: Int) {
-        weight = max(WorkoutParameters.weightMin, min(WorkoutParameters.weightMax, weight + d * WorkoutParameters.weightStep))
-    }
-
-    private func stepMinutes(_ d: Int) {
-        targetMinutes = max(WorkoutParameters.emomMinutesMin, min(WorkoutParameters.emomMinutesMax, targetMinutes + d))
-    }
-
-    private func stepRounds(_ d: Int) {
-        targetRounds = max(WorkoutParameters.roundsMin, min(WorkoutParameters.roundsMax, targetRounds + d))
-    }
-
-    private func stepRest(_ d: Int) {
-        restDuration = max(WorkoutParameters.restMin, min(WorkoutParameters.restMax, restDuration + d * WorkoutParameters.restStep))
-    }
-
-    // MARK: - Prefill logic
-
-    private func prefillFromLastSession() {
-        guard let last = lastSession else {
-            kettlebellType = prefKBType
-            weight = prefWeight
+    private func restoreSelection() {
+        if let data = UserDefaults.standard.data(forKey: "kb-setup-\(selection.rawValue)"),
+           let stored = try? JSONDecoder().decode(WorkoutDefinition.self, from: data), stored.validationError == nil {
+            definition = stored
             return
         }
-        kettlebellType = last.kettlebellType
-        weight = last.weight
-        mode = last.mode
-        if last.mode == .emom {
-            targetMinutes = last.targetMinutes
-        } else {
-            targetRounds = last.targetRounds
-            restDuration = last.restDuration ?? 60
+        let defaults = UserDefaults.standard
+        let weight = defaults.object(forKey: "kb_pref_weight") as? Int ?? 20
+        let kb = KBType(rawValue: defaults.string(forKey: "kb_pref_kbType") ?? "") ?? .double
+        definition = .builtIn(.init(workoutType: selection, mode: selection == .swingInterval ? .rounds : .emom, kettlebellType: kb, weight: weight, targetRounds: 20, restDuration: 60, targetLadders: 5))
+    }
+    private func launch(_ value: WorkoutDefinition, programID: UUID? = nil) {
+        if let error = value.validationError { message = error; return }
+        active = ActiveWorkoutStore.load()
+        if active != nil { route = .recovery }
+        else { route = .workout(value, programID) }
+    }
+    private func refresh() {
+        active = ActiveWorkoutStore.load()
+        LiveActivityService.shared.reconcile(hasActiveWorkout: active != nil)
+        do { try SessionRepository.reconcileDuplicates(context: context) }
+        catch { message = error.localizedDescription }
+        WidgetSnapshotService.refresh(context: context)
+        if let program = programs.filter(\.isActive).sorted(by: { $0.modifiedAt > $1.modifiedAt }).first, program.remindersEnabled {
+            Task { await NotificationService.scheduleProgram(days: program.weekdays, hour: program.reminderHour, minute: program.reminderMinute, override: program.rescheduledDate) }
+        }
+    }
+    private func handlePendingLaunch() {
+        if let request = WorkoutLaunchRequest.consume() { handle(request) }
+    }
+    private func handle(_ request: WorkoutLaunchRequest) {
+        active = ActiveWorkoutStore.load()
+        if active != nil { route = .recovery; return }
+        switch request.action {
+        case .next: route = .program
+        case .repeatLast:
+            if let last = sessions.first { launch(last.repeatDefinition) }
+            else { message = "Save your first workout before repeating it." }
+        case .preset:
+            if let template = templates.first(where: { $0.id.uuidString == request.presetID }), let definition = template.definition { launch(definition) }
+            else { message = "This preset is no longer available. Choose one from Workouts." }
         }
     }
 }
 
-// MARK: - Navigation route
-
-fileprivate enum HomeRoute: Hashable {
-    case emom
-    case rounds
-    case press
-    case history
-    case stats
-}
-
-// MARK: - Formatting helpers
-
-/// Relative day string (Today / Yesterday / N days ago …), from home.jsx fmt.relativeDay.
-fileprivate func relativeDay(_ date: Date) -> String {
-    let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-    if days <= 0 { return "Today" }
-    if days == 1 { return "Yesterday" }
-    if days < 7 { return "\(days) days ago" }
-    if days < 14 { return "Last week" }
-    return "\(days / 7) weeks ago"
-}
-
-#Preview {
-    NavigationStack {
-        HomeView()
-    }
-    .modelContainer(for: WorkoutSession.self, inMemory: true)
+private enum HomeRoute: Hashable, Identifiable {
+    case workout(WorkoutDefinition, UUID?), recovery, history, stats, library, program
+    var id: Self { self }
 }

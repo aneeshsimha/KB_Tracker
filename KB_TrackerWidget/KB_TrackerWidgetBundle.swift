@@ -8,5 +8,6 @@ import SwiftUI
 struct KB_TrackerWidgetBundle: WidgetBundle {
     var body: some Widget {
         KBTimerLiveActivity()
+        KBTrainingWidget()
     }
 }

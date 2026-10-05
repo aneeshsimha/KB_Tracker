@@ -26,6 +26,18 @@ final class WorkoutSession {
     private var workoutTypeRaw: String = WorkoutType.abc.rawValue
     var targetLadders: Int = 0          // press: target number of 2-3-5-10 ladders
     var ladderReps: [Int] = []          // press: reps completed per ladder (full = 20)
+    var schemaVersion: Int = 1
+    var definitionData: Data? = nil
+    var resultsData: Data? = nil
+    var endedAt: Date? = nil
+    var pausedDuration: TimeInterval = 0
+    var sourceRaw: String = "legacy"
+    var difficultyRaw: String? = nil
+    var programID: UUID? = nil
+    var modifiedAt: Date = Date()
+    var healthExportedAt: Date? = nil
+    var healthWorkoutID: String? = nil
+    var healthExportError: String? = nil
 
     var mode: WorkoutMode {
         get { WorkoutMode(rawValue: modeRaw) ?? .emom }
@@ -56,6 +68,50 @@ final class WorkoutSession {
 
 // MARK: - Computed Properties
 extension WorkoutSession {
+    var definition: WorkoutDefinition? {
+        get { definitionData.flatMap { try? JSONDecoder().decode(WorkoutDefinition.self, from: $0) } }
+        set { definitionData = newValue.flatMap { try? JSONEncoder().encode($0) } }
+    }
+    var results: [WorkoutSetResult] {
+        get { resultsData.flatMap { try? JSONDecoder().decode([WorkoutSetResult].self, from: $0) } ?? [] }
+        set { resultsData = try? JSONEncoder().encode(newValue) }
+    }
+    var difficulty: SessionDifficulty? {
+        get { difficultyRaw.flatMap(SessionDifficulty.init(rawValue:)) }
+        set { difficultyRaw = newValue?.rawValue }
+    }
+    var displayTitle: String { definition?.name ?? workoutType.title }
+    var recordedReps: Int? {
+        if resultsData != nil {
+            let completed = results.filter(\.completed)
+            guard !completed.isEmpty else { return nil }
+            // A runner set is only aggregate-safe when every prescribed movement
+            // in its block has an actual rep entry. Manual blocks have no
+            // prescription, so their explicitly entered movements remain valid.
+            let blocks = Dictionary(uniqueKeysWithValues: (definition?.blocks ?? []).map { ($0.id, $0) })
+            guard completed.allSatisfy({ result in
+                guard result.totalReps != nil else { return false }
+                guard session.sourceRaw != "manual", let block = blocks[result.blockID], !block.movements.isEmpty else { return true }
+                let recorded = Set(result.repetitions.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+                let prescribed = Set(block.movements.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+                return prescribed.isSubset(of: recorded)
+            }) else { return nil }
+            return completed.reduce(0) { $0 + ($1.totalReps ?? 0) }
+        }
+        return workoutType == .press ? ladderReps.reduce(0, +) : nil
+    }
+    var estimatedReps: Int? {
+        if let recordedReps { return recordedReps }
+        return workoutType == .abc ? setTimes.count * 6 : nil
+    }
+    var recordedVolume: Double? {
+        guard resultsData != nil, recordedReps != nil else { return nil }
+        return results.filter(\.completed).reduce(0) { $0 + Double($1.totalReps ?? 0) * $1.loadKg * Double($1.bells) }
+    }
+    var workSets: Int { resultsData != nil ? results.filter(\.completed).count : (workoutType == .press ? ladderReps.count : setTimes.count) }
+    var repeatDefinition: WorkoutDefinition {
+        definition ?? .builtIn(WorkoutConfig(workoutType: workoutType, mode: mode, kettlebellType: kettlebellType, weight: weight, targetRounds: max(1, targetRounds), restDuration: restDuration, targetLadders: max(1, targetLadders)))
+    }
     // Display string for weight (e.g., "2×20kg" or "20kg")
     var weightDisplay: String { kettlebellType.weightDisplay(weight) }
 

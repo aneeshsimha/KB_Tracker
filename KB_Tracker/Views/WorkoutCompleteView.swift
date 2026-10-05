@@ -120,7 +120,7 @@ struct WorkoutCompleteView: View {
             case .abc:           bodyLine
             case .snatchTest:    snatchBodyLine
             case .swingInterval: swingBodyLine
-            case .press:         EmptyView()
+            case .press, .custom: EmptyView()
             }
         }
         .padding(.vertical, 6)

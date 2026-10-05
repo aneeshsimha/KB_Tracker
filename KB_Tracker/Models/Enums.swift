@@ -25,11 +25,22 @@ enum KBType: String, Codable {
 }
 
 /// Which workout this session is: the ABC complex or the press ladder.
-enum WorkoutType: String, Codable {
+enum WorkoutType: String, Codable, CaseIterable, Identifiable {
     case abc           // 2 cleans · 1 press · 3 front squats (EMOM/Rounds)
     case press         // 2-3-5-10 press ladder
     case snatchTest    // timed snatch test (EMOM-style)
     case swingInterval // swing intervals with rest (Rounds-style)
+    case custom
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .abc: return "ABC"
+        case .press: return "Press"
+        case .snatchTest: return "Snatch"
+        case .swingInterval: return "Swing"
+        case .custom: return "Custom"
+        }
+    }
 }
 
 // MARK: - Timer Phase Enums

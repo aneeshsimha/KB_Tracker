@@ -5,15 +5,33 @@
 
 import AVFoundation
 import AudioToolbox
+import UIKit
 
 protocol AudioCueing {
     func playCountdownBeep()
     func playGoBeep()
     func playCompletionSound()
+    func announce(_ phrase: String)
+}
+
+extension AudioCueing {
+    func announce(_ phrase: String) {}
 }
 
 class AudioService: AudioCueing {
     static let shared = AudioService()
+    private let speech = AVSpeechSynthesizer()
+
+    func announce(_ phrase: String) {
+        guard UserDefaults.standard.bool(forKey: "kb_pref_spoken"), UIApplication.shared.applicationState == .active else { return }
+        speech.stopSpeaking(at: .immediate)
+        speech.speak(AVSpeechUtterance(string: phrase))
+    }
+
+    private func haptic() {
+        guard UserDefaults.standard.object(forKey: "kb_pref_haptics") as? Bool ?? true else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
 
     private init() {
         configureAudioSession()
@@ -50,12 +68,14 @@ class AudioService: AudioCueing {
 
     /// Play GO beep (louder, more prominent)
     func playGoBeep() {
+        haptic()
         guard soundEnabled else { return }
         AudioServicesPlaySystemSound(1103)  // Metallic ping
     }
 
     /// Play completion sound (workout finished)
     func playCompletionSound() {
+        haptic()
         guard soundEnabled else { return }
         AudioServicesPlaySystemSound(1025)  // Completion sound
     }

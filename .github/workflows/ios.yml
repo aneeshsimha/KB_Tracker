@@ -1,0 +1,33 @@
+name: iOS verification
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app and extension
+        run: xcodebuild -scheme KB_Tracker -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Select simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
+          test -n "$DEVICE_ID"
+          echo "DEVICE_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+      - name: Run tests
+        run: xcodebuild -scheme KB_Tracker -destination "platform=iOS Simulator,id=$DEVICE_ID" -derivedDataPath build -resultBundlePath TestResults CODE_SIGNING_ALLOWED=NO test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults.xcresult

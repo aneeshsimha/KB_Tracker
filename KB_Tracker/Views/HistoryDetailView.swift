@@ -14,6 +14,9 @@ struct HistoryDetailView: View {
 
     @State private var notes: String
     @State private var showDeleteConfirm = false
+    @State private var showEditor = false
+    @State private var showComparisonPicker = false
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var allSessions: [WorkoutSession]
 
     init(session: WorkoutSession) {
         self.session = session
@@ -46,6 +49,11 @@ struct HistoryDetailView: View {
                             eachSetCard
                         }
                         notesCard
+                        Button("Compare sessions") { showComparisonPicker = true }
+                            .font(.system(size: 15, weight: .semibold)).foregroundColor(AppColors.ink)
+                        NavigationLink { WorkoutRunnerView(definition: session.repeatDefinition) } label: {
+                            Text("Repeat workout").font(.system(size: 16, weight: .semibold)).foregroundColor(AppColors.background).frame(maxWidth: .infinity).padding(.vertical, 13).background(AppColors.ink, in: RoundedRectangle(cornerRadius: 10))
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 4)
@@ -54,13 +62,21 @@ struct HistoryDetailView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showEditor) { NavigationStack { ManualSessionView(session: session) } }
+        .sheet(isPresented: $showComparisonPicker) {
+            NavigationStack {
+                List(allSessions.filter { $0.id != session.id }) { candidate in
+                    NavigationLink(candidate.displayTitle + " · " + candidate.date.formatted(date: .abbreviated, time: .omitted)) { SessionComparisonView(first: session, second: candidate) }
+                }
+                .navigationTitle("Compare with")
+            }
+        }
         .confirmSheet(isPresented: $showDeleteConfirm,
                       title: "Delete this session?",
                       message: "This can't be undone.",
                       confirmLabel: "Delete",
                       cancelLabel: "Cancel") {
-            modelContext.delete(session)
-            dismiss()
+            do { try SessionRepository.delete(session, context: modelContext); dismiss() } catch { }
         }
     }
 
@@ -72,7 +88,10 @@ struct HistoryDetailView: View {
             Spacer()
             Eyebrow(session.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).uppercased())
             Spacer()
-            IconButton(icon: .trash, color: AppColors.red) { showDeleteConfirm = true }
+            HStack(spacing: 12) {
+                Button { showEditor = true } label: { Image(systemName: "pencil").foregroundColor(AppColors.ink) }
+                IconButton(icon: .trash, color: AppColors.red) { showDeleteConfirm = true }
+            }
         }
         .frame(height: 32)
         .padding(.horizontal, 20)
@@ -181,6 +200,7 @@ struct HistoryDetailView: View {
         let trimmed = notes.isEmpty ? nil : notes
         if session.notes != trimmed {
             session.notes = trimmed
+            session.modifiedAt = .now
         }
     }
 }

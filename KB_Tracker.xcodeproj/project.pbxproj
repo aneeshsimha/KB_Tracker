@@ -56,10 +56,16 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+        BC1000012F199D5F000EF356 /* App Info */ = {
+            isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+            membershipExceptions = (Resources/AppInfo.plist,);
+            target = B45711D82F199D5E000EF355;
+        };
 		B45711DB2F199D5F000EF356 /* Exceptions for "KB_Tracker" folder in "KB_TrackerWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Models/KBTimerAttributes.swift,
+                Models/WidgetSnapshot.swift,
 			);
 			target = CA00006F2F199D60000EF311 /* KB_TrackerWidget */;
 		};
@@ -69,6 +75,7 @@
 		B45711DB2F199D5E000EF355 /* KB_Tracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+                BC1000012F199D5F000EF356 /* App Info */,
 				B45711DB2F199D5F000EF356 /* Exceptions for "KB_Tracker" folder in "KB_TrackerWidget" target */,
 			);
 			path = KB_Tracker;
@@ -502,6 +509,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "KB Tracker saves completed kettlebell workouts to Apple Health.";
+                INFOPLIST_FILE = KB_Tracker/Resources/AppInfo.plist;
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "KB Tracker saves completed kettlebell workouts to Apple Health.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -538,6 +546,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "KB Tracker saves completed kettlebell workouts to Apple Health.";
+                INFOPLIST_FILE = KB_Tracker/Resources/AppInfo.plist;
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "KB Tracker saves completed kettlebell workouts to Apple Health.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

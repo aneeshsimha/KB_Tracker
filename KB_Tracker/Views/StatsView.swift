@@ -14,7 +14,7 @@ struct StatsView: View {
     private var totalRounds: Int { sessions.reduce(0) { $0 + $1.completedRounds } }
     private var totalHours: Double { sessions.reduce(0.0) { $0 + $1.totalDuration } / 3600 }
 
-    private var allSetTimes: [TimeInterval] { sessions.flatMap { $0.setTimes } }
+    private var allSetTimes: [TimeInterval] { sessions.compactMap(SessionMetrics.measuredDuration) }
     private var avgSetTime: TimeInterval? {
         guard !allSetTimes.isEmpty else { return nil }
         return allSetTimes.reduce(0, +) / Double(allSetTimes.count)
@@ -32,8 +32,8 @@ struct StatsView: View {
                 return WeekBucket(weekOffset: weekOffset, sessionCount: 0, setTimes: [], totalReps: 0)
             }
             let weekSessions = sessions.filter { weekInterval.contains($0.date) }
-            let setTimes = weekSessions.flatMap { $0.setTimes }
-            let totalReps = weekSessions.reduce(0) { $0 + $1.totalReps }
+            let setTimes = weekSessions.compactMap(SessionMetrics.measuredDuration)
+            let totalReps = weekSessions.compactMap(\.recordedReps).reduce(0, +)
             return WeekBucket(
                 weekOffset: weekOffset,
                 sessionCount: weekSessions.count,
@@ -96,6 +96,7 @@ struct StatsView: View {
                             weeklyCard("WEEKLY SESSIONS", volumeSeries, mode: .rounds)
                             weeklyCard("WEEKLY AVG SET TIME", avgSetSeries, mode: .emom)
                             weeklyCard("WEEKLY REPS", repsSeries, mode: .rounds)
+                            movementCard
 
                             // Lifetime averages
                             HStack(spacing: 8) {
@@ -134,6 +135,19 @@ struct StatsView: View {
                     .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private var movementCard: some View {
+        let movements = SessionMetrics.movementReps(sessions).sorted { $0.value > $1.value }
+        let volume = SessionMetrics.movementVolume(sessions)
+        let completion = sessions.compactMap(SessionMetrics.completionRate)
+        return VStack(alignment: .leading, spacing: 8) {
+            Eyebrow("RECORDED REPS BY MOVEMENT")
+            if movements.isEmpty { Text("–  No recorded movement reps").font(AppTypography.bodyText).foregroundColor(AppColors.ink3) }
+            else { ForEach(movements, id: \.key) { Text("\($0.key)  \($0.value) reps  ·  \(volume[$0.key, default: 0].formatted(.number.precision(.fractionLength(0...1)))) kg").font(AppTypography.mono(14)).foregroundColor(AppColors.ink) } }
+            Text("Completion rate: \(completion.isEmpty ? "–" : (completion.reduce(0, +) / Double(completion.count)).formatted(.percent.precision(.fractionLength(0))))").font(.caption).foregroundColor(AppColors.ink3)
+            Text("Only actual recorded reps are included; estimates are excluded.").font(.caption).foregroundColor(AppColors.ink4)
+        }.padding(16).kbCard()
     }
 }
 

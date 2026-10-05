@@ -10,6 +10,18 @@ import SwiftData
 struct HistoryView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @State private var query = ""
+    @State private var loadFilter = ""
+    @State private var recentOnly = false
+    @State private var selectedType: WorkoutType? = nil
+    @State private var completedOnly = false
+    @State private var showManual = false
+    @State private var backupDocument: KBBackupDocument?
+    @State private var showBackupExporter = false
+    @State private var showBackupImporter = false
+    @State private var importPreview: BackupService.Preview?
+    @State private var importError: String?
 
     // MARK: - Derived totals
 
@@ -17,7 +29,15 @@ struct HistoryView: View {
     private var totalRounds: Int { sessions.reduce(0) { $0 + $1.completedRounds } }
     private var totalHours: Double { sessions.reduce(0.0) { $0 + $1.totalDuration } / 3600 }
 
-    private var groups: [WeekGroup] { groupByWeek(sessions) }
+    private var filteredSessions: [WorkoutSession] {
+        sessions.filter { session in
+            let text = "\(session.displayTitle) \(session.notes ?? "")".localizedCaseInsensitiveContains(query)
+            let loadMatches = loadFilter.isEmpty || session.weightDisplay.localizedCaseInsensitiveContains(loadFilter) || String(session.weight).contains(loadFilter)
+            let dateMatches = !recentOnly || session.date >= Calendar.current.date(byAdding: .day, value: -30, to: .now)!
+            return text && loadMatches && dateMatches && (selectedType == nil || session.workoutType == selectedType) && (!completedOnly || session.isCompleted)
+        }
+    }
+    private var groups: [WeekGroup] { groupByWeek(filteredSessions) }
     private var exportCSV: String { WorkoutExporter.csv(from: sessions) }
 
     var body: some View {
@@ -38,9 +58,11 @@ struct HistoryView: View {
                         .padding(.bottom, 18)
 
                         // 8-week training arc heatmap
-                        WeekStrip(sessions: sessions)
+                        WeekStrip(sessions: filteredSessions)
 
-                        if totalSessions == 0 {
+                        filters
+
+                        if filteredSessions.isEmpty {
                             VStack(spacing: 10) {
                                 Eyebrow("NO SESSIONS YET")
                                 Text("Finish a workout and it'll land here.")
@@ -80,6 +102,14 @@ struct HistoryView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showManual) { NavigationStack { ManualSessionView() } }
+        .fileExporter(isPresented: $showBackupExporter, document: backupDocument, contentType: .json, defaultFilename: "kb-tracker-backup") { _ in backupDocument = nil }
+        .fileImporter(isPresented: $showBackupImporter, allowedContentTypes: [.json]) { result in
+            do { let url = try result.get(); let data = try Data(contentsOf: url); importPreview = try BackupService.preview(data: data, context: modelContext) }
+            catch { importError = error.localizedDescription }
+        }
+        .alert("Backup", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) { Button("OK", role: .cancel) {} } message: { Text(importError ?? "") }
+        .confirmationDialog("Import backup?", isPresented: Binding(get: { importPreview != nil }, set: { if !$0 { importPreview = nil } })) { Button("Import") { if let preview = importPreview { do { try BackupService.import(preview, context: modelContext); importPreview = nil } catch { importError = error.localizedDescription } } }; Button("Cancel", role: .cancel) { importPreview = nil } } message: { Text(importPreview.map { "\($0.newSessions) new sessions and \($0.updates) matching sessions will be merged. Newer changes win." } ?? "") }
     }
 
     // MARK: - Header
@@ -90,6 +120,13 @@ struct HistoryView: View {
             Spacer()
             Eyebrow("HISTORY")
             Spacer()
+            Menu {
+                Button("Add manual session") { showManual = true }
+                Button("Export backup") { do { backupDocument = try KBBackupDocument(archive: BackupService.archive(context: modelContext)); showBackupExporter = true } catch { importError = error.localizedDescription } }
+                Button("Import backup") { showBackupImporter = true }
+            } label: {
+                Image(systemName: "ellipsis.circle").font(.system(size: 18, weight: .semibold)).foregroundColor(AppColors.ink)
+            }
             ShareLink(
                 item: exportCSV,
                 preview: SharePreview("KB Tracker Sessions", image: Image(systemName: "figure.strengthtraining.traditional"))
@@ -109,6 +146,19 @@ struct HistoryView: View {
         .padding(.horizontal, 20)
         .padding(.top, 14)
         .padding(.bottom, 8)
+    }
+
+    private var filters: some View {
+        VStack(spacing: 8) {
+            TextField("Search notes or workout", text: $query).textFieldStyle(.roundedBorder)
+            HStack {
+                Menu(selectedType?.title ?? "All workouts") { Button("All workouts") { selectedType = nil }; ForEach(WorkoutType.allCases) { type in Button(type.title) { selectedType = type } } }
+                Spacer()
+                Toggle("Completed", isOn: $completedOnly).font(.caption).fixedSize()
+            }
+            HStack { TextField("Load", text: $loadFilter).textFieldStyle(.roundedBorder); Toggle("Last 30 days", isOn: $recentOnly).font(.caption).fixedSize() }
+        }
+        .padding(.vertical, 12)
     }
 }
 
@@ -204,6 +254,7 @@ fileprivate struct SessionRow: View {
         case .snatchTest:   return "Snatch Test"
         case .swingInterval: return "Swing Interval"
         case .press:        return "Press"
+        case .custom:       return session.displayTitle
         }
     }
 

@@ -12,7 +12,9 @@ struct KBTimerLiveActivityView: View {
     private var phaseLabel: String {
         switch state.phase {
         case "getReady":  return "GET READY"
-        case "resting":   return "REST"
+        case "resting", "rest": return "REST"
+        case "paused": return "PAUSED"
+        case "waitingNext": return "NEXT BLOCK"
         case "complete":  return "DONE"
         default:          return state.mode == "emom" ? "EMOM" : "WORK"
         }
@@ -34,8 +36,8 @@ struct KBTimerLiveActivityView: View {
                 Text(workoutTypeLabel)
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.6))
-                if state.phase == "complete" {
-                    Text("0:00")
+                if ["complete", "paused", "waitingNext"].contains(state.phase) {
+                    Text(String(format: "%02d:%02d", Int(state.elapsedSeconds) / 60, Int(state.elapsedSeconds) % 60))
                         .font(.system(size: 22, weight: .semibold, design: .monospaced))
                         .foregroundColor(.white.opacity(0.5))
                 } else {
@@ -55,7 +57,8 @@ struct KBTimerLiveActivityView: View {
         case "snatchTest":    return "SNATCH"
         case "swingInterval": return "SWING"
         case "press":         return "PRESS"
-        default:              return "ABC"
+        case "abc":           return "ABC"
+        default:              return context.attributes.workoutType
         }
     }
 
@@ -70,7 +73,7 @@ struct KBTimerLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading) {
-                        Text(context.state.phase == "resting" ? "REST" : "ROUND")
+                        Text(["rest", "resting"].contains(context.state.phase) ? "REST" : "SET")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.6))
                         Text("\(context.state.currentRound)/\(context.state.totalRounds)")
@@ -83,8 +86,8 @@ struct KBTimerLiveActivity: Widget {
                         Text(context.state.phase == "complete" ? "DONE" : "COUNTDOWN")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.6))
-                        if context.state.phase == "complete" {
-                            Text("0:00")
+                        if ["complete", "paused", "waitingNext"].contains(context.state.phase) {
+                            Text(String(format: "%02d:%02d", Int(context.state.elapsedSeconds) / 60, Int(context.state.elapsedSeconds) % 60))
                                 .font(.system(size: 20, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.white.opacity(0.5))
                         } else {
@@ -100,8 +103,8 @@ struct KBTimerLiveActivity: Widget {
                     .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
             } compactTrailing: {
-                if context.state.phase == "complete" {
-                    Text("✓")
+                if ["complete", "paused", "waitingNext"].contains(context.state.phase) {
+                    Text(context.state.phase == "complete" ? "✓" : "Ⅱ")
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                 } else {
