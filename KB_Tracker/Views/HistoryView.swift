@@ -36,7 +36,7 @@ struct HistoryView: View {
     private var filteredSessions: [WorkoutSession] {
         let requestedLoad = Double(loadFilter).map(unit.kilograms)
         return sessions.filter { session in
-            let text = "\(session.displayTitle) \(session.notes ?? "")".localizedCaseInsensitiveContains(query)
+            let text = query.isEmpty || "\(session.displayTitle) \(session.notes ?? "")".localizedCaseInsensitiveContains(query)
             let loads = session.definition?.blocks.map(\.loadKg) ?? [Double(session.weight)]
             let loadMatches = loadFilter.isEmpty || (requestedLoad.map { target in target.isFinite && target > 0 && loads.contains { abs($0 - target) < 0.0001 } } ?? false)
             let rangeEnd = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate)) ?? endDate
@@ -97,6 +97,8 @@ struct HistoryView: View {
                                             SessionRow(session: session)
                                         }
                                         .buttonStyle(TapScaleStyle())
+                                        .accessibilityIdentifier("history-session-\(session.id.uuidString)")
+                                        .accessibilityLabel("\(session.displayTitle), \(session.date.formatted(date: .abbreviated, time: .omitted)), \(session.workSets) sets, \(session.isCompleted ? "completed" : "partial")")
                                     }
                                 }
                             }

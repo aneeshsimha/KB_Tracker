@@ -35,6 +35,11 @@ final class FeatureFlowsTests: XCTestCase {
         app.buttons["Cancel"].tap()
 
         app.buttons["Workout history"].tap()
+        let historyRow = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "history-session-")).firstMatch
+        XCTAssertTrue(historyRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(historyRow.label.contains("Test Press"))
+        capture("Saved session in history", app: app)
+        historyRow.tap()
         XCTAssertTrue(app.staticTexts["Test Press"].waitForExistence(timeout: 5))
     }
 
