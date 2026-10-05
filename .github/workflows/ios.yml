@@ -25,7 +25,7 @@ jobs:
           test -n "$DEVICE_ID"
           echo "DEVICE_ID=$DEVICE_ID" >> "$GITHUB_ENV"
       - name: Run tests
-        run: xcodebuild -scheme KB_Tracker -destination "platform=iOS Simulator,id=$DEVICE_ID" -derivedDataPath build -resultBundlePath TestResults CODE_SIGNING_ALLOWED=NO test
+        run: xcodebuild -scheme KB_Tracker -destination "platform=iOS Simulator,id=$DEVICE_ID" -parallel-testing-enabled NO -derivedDataPath build -resultBundlePath TestResults CODE_SIGNING_ALLOWED=NO test
       - uses: actions/upload-artifact@v4
         if: always()
         with:

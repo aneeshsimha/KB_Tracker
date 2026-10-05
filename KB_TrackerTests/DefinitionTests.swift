@@ -26,7 +26,7 @@ final class DefinitionTests: XCTestCase {
 
     func testPoundsAreStoredAsKilograms() {
         let kilograms = WeightUnit.lb.kilograms(35)
-        XCTAssertEqual(kilograms, 15.875233, accuracy: 0.000001)
+        XCTAssertEqual(kilograms, 15.87573295, accuracy: 0.00000001)
         XCTAssertEqual(WeightUnit.lb.display(kilograms), 35, accuracy: 0.000001)
     }
 
