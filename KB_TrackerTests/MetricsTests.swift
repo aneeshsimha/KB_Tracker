@@ -17,7 +17,7 @@ struct MetricsTests {
                                        reps: block.rungs[index % block.rungs.count])]
                 } else {
                     movements = block.movements.compactMap { movement in
-                        movement.reps.map { .init(name: movement.name, reps: reps) }
+                        movement.reps.map { _ in .init(name: movement.name, reps: reps) }
                     }
                 }
                 return WorkoutSetResult(blockID: block.id, setIndex: index, duration: 10,

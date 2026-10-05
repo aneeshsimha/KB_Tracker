@@ -8,6 +8,7 @@ final class FeatureFlowsTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Test ABC"].waitForExistence(timeout: 5))
         app.buttons["Create workout"].tap()
         XCTAssertTrue(app.navigationBars["Workout builder"].waitForExistence(timeout: 5))
+        capture("Workout builder", app: app)
         let name = app.textFields["Workout name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
@@ -24,6 +25,7 @@ final class FeatureFlowsTests: XCTestCase {
         XCTAssertTrue(log.waitForExistence(timeout: 12))
         log.tap()
         XCTAssertTrue(app.staticTexts["Workout complete"].waitForExistence(timeout: 5))
+        capture("Completed press session", app: app)
         tapWhenVisible(app.buttons["Save session"], in: app)
 
         let repeatButton = app.buttons["Repeat"]
@@ -71,6 +73,7 @@ final class FeatureFlowsTests: XCTestCase {
         app.buttons["Program"].tap()
         XCTAssertTrue(app.staticTexts["UP NEXT"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["WEEKLY SCHEDULE"].exists)
+        capture("Training program", app: app)
         app.buttons["2 days"].tap()
         XCTAssertTrue(app.staticTexts["0 / 2 planned sessions"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Start planned workout"].exists)
@@ -83,7 +86,16 @@ final class FeatureFlowsTests: XCTestCase {
         app.launchEnvironment["KB_UI_TESTING"] = "1"
         app.launch()
         XCTAssertTrue(app.buttons["Workouts"].waitForExistence(timeout: 10))
+        capture("Home", app: app)
         return app
+    }
+
+    @MainActor
+    private func capture(_ name: String, app: XCUIApplication) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
