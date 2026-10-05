@@ -6,6 +6,7 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct HistoryView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
@@ -13,9 +14,12 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var query = ""
     @State private var loadFilter = ""
-    @State private var recentOnly = false
+    @AppStorage("kb_weight_unit") private var unit: WeightUnit = .kg
+    @State private var useDateRange = false
+    @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now
+    @State private var endDate = Date.now
     @State private var selectedType: WorkoutType? = nil
-    @State private var completedOnly = false
+    @State private var statusFilter = 0
     @State private var showManual = false
     @State private var backupDocument: KBBackupDocument?
     @State private var showBackupExporter = false
@@ -30,11 +34,14 @@ struct HistoryView: View {
     private var totalHours: Double { sessions.reduce(0.0) { $0 + $1.totalDuration } / 3600 }
 
     private var filteredSessions: [WorkoutSession] {
+        let requestedLoad = Double(loadFilter).map(unit.kilograms)
         sessions.filter { session in
             let text = "\(session.displayTitle) \(session.notes ?? "")".localizedCaseInsensitiveContains(query)
-            let loadMatches = loadFilter.isEmpty || session.weightDisplay.localizedCaseInsensitiveContains(loadFilter) || String(session.weight).contains(loadFilter)
-            let dateMatches = !recentOnly || session.date >= Calendar.current.date(byAdding: .day, value: -30, to: .now)!
-            return text && loadMatches && dateMatches && (selectedType == nil || session.workoutType == selectedType) && (!completedOnly || session.isCompleted)
+            let loads = session.definition?.blocks.map(\.loadKg) ?? [Double(session.weight)]
+            let loadMatches = loadFilter.isEmpty || (requestedLoad.map { target in !loads.isEmpty && loads.allSatisfy { abs($0 - target) < 0.0001 } } ?? false)
+            let dateMatches = !useDateRange || (session.date >= Calendar.current.startOfDay(for: startDate) && session.date < Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate))!)
+            let statusMatches = statusFilter == 0 || (statusFilter == 1 ? session.isCompleted : !session.isCompleted)
+            return text && loadMatches && dateMatches && statusMatches && (selectedType == nil || session.workoutType == selectedType)
         }
     }
     private var groups: [WeekGroup] { groupByWeek(filteredSessions) }
@@ -103,9 +110,12 @@ struct HistoryView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showManual) { NavigationStack { ManualSessionView() } }
-        .fileExporter(isPresented: $showBackupExporter, document: backupDocument, contentType: .json, defaultFilename: "kb-tracker-backup") { _ in backupDocument = nil }
+        .fileExporter(isPresented: $showBackupExporter, document: backupDocument, contentType: .json, defaultFilename: "kb-tracker-backup") { result in
+            backupDocument = nil
+            if case .failure(let error) = result { importError = error.localizedDescription }
+        }
         .fileImporter(isPresented: $showBackupImporter, allowedContentTypes: [.json]) { result in
-            do { let url = try result.get(); let data = try Data(contentsOf: url); importPreview = try BackupService.preview(data: data, context: modelContext) }
+            do { let url = try result.get(); let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }; let data = try Data(contentsOf: url); importPreview = try BackupService.preview(data: data, context: modelContext) }
             catch { importError = error.localizedDescription }
         }
         .alert("Backup", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) { Button("OK", role: .cancel) {} } message: { Text(importError ?? "") }
@@ -154,9 +164,11 @@ struct HistoryView: View {
             HStack {
                 Menu(selectedType?.title ?? "All workouts") { Button("All workouts") { selectedType = nil }; ForEach(WorkoutType.allCases) { type in Button(type.title) { selectedType = type } } }
                 Spacer()
-                Toggle("Completed", isOn: $completedOnly).font(.caption).fixedSize()
+                Picker("Status", selection: $statusFilter) { Text("All").tag(0); Text("Complete").tag(1); Text("Partial").tag(2) }.pickerStyle(.segmented).frame(maxWidth: 210)
             }
-            HStack { TextField("Load", text: $loadFilter).textFieldStyle(.roundedBorder); Toggle("Last 30 days", isOn: $recentOnly).font(.caption).fixedSize() }
+            HStack { TextField("Load (\(unit.rawValue))", text: $loadFilter).textFieldStyle(.roundedBorder); Toggle("Date range", isOn: $useDateRange).font(.caption).fixedSize() }
+            if !loadFilter.isEmpty && Double(loadFilter) == nil { Text("Enter a numeric load in \(unit.rawValue).").font(.caption).foregroundColor(AppColors.red) }
+            if useDateRange { HStack { DatePicker("From", selection: $startDate, displayedComponents: .date); DatePicker("To", selection: $endDate, in: startDate..., displayedComponents: .date) } }
         }
         .padding(.vertical, 12)
     }

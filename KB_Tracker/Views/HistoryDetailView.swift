@@ -16,6 +16,9 @@ struct HistoryDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var showEditor = false
     @State private var showComparisonPicker = false
+    @State private var healthState = ""
+    @State private var savingHealth = false
+    @State private var actionError: String?
     @Query(sort: \WorkoutSession.date, order: .reverse) private var allSessions: [WorkoutSession]
 
     init(session: WorkoutSession) {
@@ -38,7 +41,9 @@ struct HistoryDetailView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        if session.workoutType == .press {
+                        if session.definition != nil {
+                            modernDetail
+                        } else if session.workoutType == .press {
                             pressHero
                             SessionStatsGrid(session: session, spacing: 8)
                             pressLadderGrid
@@ -49,6 +54,10 @@ struct HistoryDetailView: View {
                             eachSetCard
                         }
                         notesCard
+                        Button(savingHealth ? "Saving to Apple Health…" : "Save to Apple Health") { exportHealth() }
+                            .disabled(savingHealth || session.healthExportedAt != nil)
+                            .font(.system(size: 15, weight: .semibold)).foregroundColor(AppColors.ink)
+                        if !healthState.isEmpty { Text(healthState).font(.caption).foregroundColor(AppColors.ink3) }
                         Button("Compare sessions") { showComparisonPicker = true }
                             .font(.system(size: 15, weight: .semibold)).foregroundColor(AppColors.ink)
                         NavigationLink { WorkoutRunnerView(definition: session.repeatDefinition) } label: {
@@ -71,12 +80,13 @@ struct HistoryDetailView: View {
                 .navigationTitle("Compare with")
             }
         }
+        .alert("Session update", isPresented: Binding(get: { actionError != nil }, set: { if !$0 { actionError = nil } })) { Button("OK") {} } message: { Text(actionError ?? "") }
         .confirmSheet(isPresented: $showDeleteConfirm,
                       title: "Delete this session?",
                       message: "This can't be undone.",
                       confirmLabel: "Delete",
                       cancelLabel: "Cancel") {
-            do { try SessionRepository.delete(session, context: modelContext); dismiss() } catch { }
+            do { try SessionRepository.delete(session, context: modelContext); dismiss() } catch { actionError = error.localizedDescription }
         }
     }
 
@@ -100,6 +110,22 @@ struct HistoryDetailView: View {
     }
 
     // MARK: - Hero
+
+    private var modernDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(session.displayTitle).font(AppTypography.numeralLg).foregroundColor(AppColors.ink)
+            Text(session.isCompleted ? "COMPLETED" : "PARTIAL").font(AppTypography.mono(12)).foregroundColor(AppColors.ink3)
+            HStack { DetailCell(label: "SETS", value: "\(session.workSets)"); DetailCell(label: "REPS", value: session.recordedReps.map(String.init) ?? "–"); DetailCell(label: "VOLUME", value: session.recordedVolume.map { $0.formatted(.number.precision(.fractionLength(0))) } ?? "–"); DetailCell(label: "TIME", value: SessionMetrics.measuredDuration(session)?.formattedMinutesSecondsPadded ?? "–") }
+            ForEach(session.definition?.blocks ?? []) { block in
+                VStack(alignment: .leading, spacing: 4) {
+                    Eyebrow(block.name)
+                    ForEach(session.results.filter { $0.blockID == block.id }.sorted { $0.setIndex < $1.setIndex }) { result in
+                        Text("Set \(result.setIndex + 1) · \(result.repetitions.map { "\($0.name) \($0.reps)" }.joined(separator: ", ").isEmpty ? "–" : result.repetitions.map { "\($0.name) \($0.reps)" }.joined(separator: ", ")) · \(result.duration?.formattedMinutesSecondsPadded ?? "–")") .font(AppTypography.mono(12)).foregroundColor(AppColors.ink2)
+                    }
+                }.padding(12).kbCard()
+            }
+        }
+    }
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -201,6 +227,17 @@ struct HistoryDetailView: View {
         if session.notes != trimmed {
             session.notes = trimmed
             session.modifiedAt = .now
+            do { try SessionRepository.save(session, context: modelContext) } catch { actionError = error.localizedDescription }
+        }
+    }
+
+    private func exportHealth() {
+        savingHealth = true
+        Task { @MainActor in
+            let ok = await HealthKitService.save(session)
+            savingHealth = false
+            healthState = ok ? "Saved to Apple Health." : (session.healthExportError ?? "Could not save to Apple Health.")
+            if ok { try? modelContext.save() }
         }
     }
 }

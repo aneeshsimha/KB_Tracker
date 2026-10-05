@@ -63,16 +63,16 @@ enum BackupService {
                 throw Error.invalid("Apple Health workout \(healthID) already belongs to another session.")
             }
         }
-        var byID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        var byID = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
         for record in preview.archive.sessions {
             if let session = byID[record.id] { if record.modifiedAt > session.modifiedAt { record.apply(to: session) } }
             else { let session = WorkoutSession(); record.apply(to: session); context.insert(session); byID[record.id] = session }
         }
-        var templates = Dictionary(uniqueKeysWithValues: try context.fetch(FetchDescriptor<WorkoutTemplate>()).map { ($0.id, $0) })
+        var templates = Dictionary(try context.fetch(FetchDescriptor<WorkoutTemplate>()).map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
         for r in preview.archive.templates { let isNew = templates[r.id] == nil; let m = templates[r.id] ?? WorkoutTemplate(definition: WorkoutDefinition(name: r.name, blocks: [WorkoutBlock()])); if isNew { context.insert(m); templates[r.id] = m }; if isNew || r.modifiedAt > m.modifiedAt { m.id=r.id; m.name=r.name; m.definitionData=r.definitionData; m.isFavorite=r.isFavorite; m.modifiedAt=r.modifiedAt } }
-        var equipment = Dictionary(uniqueKeysWithValues: try context.fetch(FetchDescriptor<EquipmentRecord>()).map { ($0.id, $0) })
+        var equipment = Dictionary(try context.fetch(FetchDescriptor<EquipmentRecord>()).map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
         for r in preview.archive.equipment { let isNew = equipment[r.id] == nil; let m = equipment[r.id] ?? EquipmentRecord(weightKg: r.weightKg, count: r.count); if isNew { context.insert(m); equipment[r.id] = m }; if isNew || r.modifiedAt > m.modifiedAt { m.id=r.id; m.weightKg=r.weightKg; m.count=r.count; m.modifiedAt=r.modifiedAt } }
-        var programs = Dictionary(uniqueKeysWithValues: try context.fetch(FetchDescriptor<TrainingProgram>()).map { ($0.id, $0) })
+        var programs = Dictionary(try context.fetch(FetchDescriptor<TrainingProgram>()).map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
         for r in preview.archive.programs { let isNew = programs[r.id] == nil; let p = programs[r.id] ?? TrainingProgram(); if isNew { context.insert(p); programs[r.id] = p }; if isNew || r.modifiedAt > p.modifiedAt { apply(r, to: p) } }
         // `rescheduleHistoryData` was added after the original record shape;
         // copy it after the normal newest-record merge has selected its winner.
@@ -87,8 +87,14 @@ enum BackupService {
     private static func validate(_ archive: Archive) throws {
         guard archive.version == currentVersion else { throw Error.unsupportedVersion }
         guard Set(archive.sessions.map(\.id)).count == archive.sessions.count else { throw Error.invalid("The backup contains duplicate session IDs.") }
+        guard Set(archive.templates.map(\.id)).count == archive.templates.count, Set(archive.equipment.map(\.id)).count == archive.equipment.count, Set(archive.programs.map(\.id)).count == archive.programs.count else { throw Error.invalid("The backup contains duplicate record IDs.") }
         let healthIDs = archive.sessions.compactMap(\.healthWorkoutID); guard Set(healthIDs).count == healthIDs.count else { throw Error.invalid("The backup contains duplicate Apple Health workout IDs.") }
-        for s in archive.sessions { guard s.totalDuration.isFinite, s.totalDuration >= 0, s.weight >= 0, s.targetRounds >= 0 else { throw Error.invalid("A session has invalid measurements.") }; if let definition = s.definitionData { guard (try? JSONDecoder().decode(WorkoutDefinition.self, from: definition))?.validationError == nil else { throw Error.invalid("A workout definition is invalid.") } } }
+        for s in archive.sessions {
+            guard WorkoutMode(rawValue: s.modeRaw) != nil, KBType(rawValue: s.kettlebellTypeRaw) != nil, WorkoutType(rawValue: s.workoutTypeRaw) != nil, s.schemaVersion == 1, s.totalDuration.isFinite, s.totalDuration >= 0, s.weight >= 0, s.targetRounds >= 0, s.completedRounds >= 0 else { throw Error.invalid("A session has invalid measurements.") }
+            if let data = s.definitionData { guard let definition = try? JSONDecoder().decode(WorkoutDefinition.self, from: data), definition.validationError == nil else { throw Error.invalid("A workout definition is invalid.") }; if let results = s.resultsData { guard let decoded = try? JSONDecoder().decode([WorkoutSetResult].self, from: results), decoded.allSatisfy({ result in definition.blocks.contains(where: { block in block.id == result.blockID }) }) else { throw Error.invalid("Workout results are invalid.") } } }
+        }
+        for t in archive.templates { guard let definition = try? JSONDecoder().decode(WorkoutDefinition.self, from: t.definitionData), definition.validationError == nil else { throw Error.invalid("A template is invalid.") } }
+        for e in archive.equipment where !e.weightKg.isFinite || e.weightKg <= 0 || e.count < 1 { throw Error.invalid("Equipment is invalid.") }
     }
 }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct WorkoutRunnerView: View {
     @StateObject private var runtime: WorkoutRuntime
@@ -11,6 +12,8 @@ struct WorkoutRunnerView: View {
     @State private var showEnd = false
     @State private var showDiscard = false
     @State private var saveError: String?
+    @State private var recoveryError = ActiveWorkoutStore.recoveryError()
+    @AppStorage("kb_weight_unit") private var weightUnit: WeightUnit = .kg
     var onSaveComplete: (() -> Void)?
 
     init(definition: WorkoutDefinition, programID: UUID? = nil,
@@ -34,6 +37,19 @@ struct WorkoutRunnerView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     topBar
+                    if let recoveryError {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(recoveryError).foregroundStyle(AppColors.red)
+                            Button("Discard damaged recovery") {
+                                do {
+                                    try ActiveWorkoutStore.clear()
+                                    self.recoveryError = nil
+                                    runtime.retryPersistence()
+                                } catch { saveError = error.localizedDescription }
+                            }
+                        }
+                        .padding(14).background(AppColors.redDim, in: RoundedRectangle(cornerRadius: 12))
+                    }
                     if runtime.isComplete { summary }
                     else { runner }
                 }
@@ -113,7 +129,7 @@ struct WorkoutRunnerView: View {
             if let block = runtime.block {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(block.name).font(.system(size: 30, weight: .bold))
-                    Text("\(block.kind.title) · \(block.bells == 2 ? "2 × " : "")\(block.loadKg.formatted()) kg")
+                    Text("\(block.kind.title) · \(weightUnit.label(block.loadKg, bells: block.bells))")
                         .foregroundStyle(AppColors.ink2)
                     HStack(alignment: .firstTextBaseline) {
                         Text(phaseTitle)
@@ -149,9 +165,16 @@ struct WorkoutRunnerView: View {
                     if block.kind == .emom && runtime.snapshot.activeSetStartedAt == nil {
                         Button("Begin set") { runtime.beginSet() }
                             .buttonStyle(RunnerPrimaryStyle())
+                            .disabled(runtime.isCurrentSetLogged)
                     }
-                    Button("Log set") { log(block) }
-                        .buttonStyle(RunnerPrimaryStyle())
+                    if canLogTarget(block) {
+                        Button("Log target reps") { logTarget(block) }
+                            .buttonStyle(RunnerPrimaryStyle())
+                            .disabled(runtime.isCurrentSetLogged)
+                    }
+                    Button("Log actual reps") { log(block) }
+                        .buttonStyle(RunnerSecondaryStyle())
+                        .disabled(runtime.isCurrentSetLogged)
                 }
                 if runtime.snapshot.phase != .getReady && runtime.snapshot.phase != .waitingNext {
                     Button("Undo last set") { runtime.undo() }
@@ -204,7 +227,7 @@ struct WorkoutRunnerView: View {
                     .frame(width: 75)
                     .padding(10)
                     .background(AppColors.surface3, in: RoundedRectangle(cornerRadius: 8))
-                    .accessibilityLabel("Actual total \(movement.name) reps")
+                    .accessibilityLabel("Actual total \(movement.name) reps\(movement.perSide ? ", both sides" : "")")
                 }
             }
             Text("Leave actual reps blank if you did not count them.")
@@ -216,6 +239,24 @@ struct WorkoutRunnerView: View {
         let reps = block.movements.compactMap { movement -> MovementReps? in
             guard let value = Int(actualReps[movement.id] ?? ""), value >= 0 else { return nil }
             return MovementReps(name: movement.name, reps: value)
+        }
+        runtime.logSet(repetitions: reps)
+        actualReps = [:]
+    }
+
+    private func canLogTarget(_ block: WorkoutBlock) -> Bool {
+        block.kind == .ladder || block.movements.allSatisfy { $0.reps != nil }
+    }
+
+    private func logTarget(_ block: WorkoutBlock) {
+        let reps: [MovementReps]
+        if block.kind == .ladder, let movement = block.movements.first, !block.rungs.isEmpty {
+            let target = block.rungs[runtime.snapshot.setIndex % block.rungs.count]
+            reps = [.init(name: movement.name, reps: target * (movement.perSide ? 2 : 1))]
+        } else {
+            reps = block.movements.compactMap { movement in
+                movement.reps.map { .init(name: movement.name, reps: $0 * (movement.perSide ? 2 : 1)) }
+            }
         }
         runtime.logSet(repetitions: reps)
         actualReps = [:]
@@ -261,7 +302,7 @@ struct WorkoutRunnerView: View {
         runtime.setSummary(notes: notes, difficulty: difficulty)
         do {
             try SessionRepository.save(runtime.makeSession(), context: modelContext)
-            ActiveWorkoutStore.clear()
+            try ActiveWorkoutStore.clear()
             if let onSaveComplete { onSaveComplete() } else { dismiss() }
         } catch {
             saveError = error.localizedDescription

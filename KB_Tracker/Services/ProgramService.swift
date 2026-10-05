@@ -37,6 +37,7 @@ enum ProgramService {
             return WorkoutDefinition(name: "ABC", workoutType: .abc, blocks: [block])
         }
         var block = WorkoutBlock(name: "Press ladder", kind: .ladder)
+        block.restSeconds = 0
         block.movements = [.init(name: "Press")]
         block.loadKg = program.pressWeightKg
         block.bells = program.pressBells

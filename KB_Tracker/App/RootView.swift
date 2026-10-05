@@ -12,7 +12,7 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if onboarded {
+            if onboarded || ProcessInfo.processInfo.environment["KB_UI_TESTING"] == "1" {
                 NavigationStack {
                     HomeView()
                 }

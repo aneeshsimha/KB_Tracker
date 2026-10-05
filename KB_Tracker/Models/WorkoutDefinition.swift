@@ -82,6 +82,7 @@ struct WorkoutDefinition: Codable, Hashable, Identifiable {
         case .press:
             block.name = "Press ladder"
             block.kind = .ladder
+            block.restSeconds = 0
             block.rounds = max(1, config.targetLadders)
             block.movements = [.init(name: "Press")]
         case .snatchTest:

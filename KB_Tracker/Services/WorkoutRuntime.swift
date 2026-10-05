@@ -12,18 +12,21 @@ final class WorkoutRuntime: ObservableObject {
     private var lastCountdownCue: (deadline: Date, second: Int)?
 
     init(definition: WorkoutDefinition, programID: UUID? = nil,
-         now: @escaping () -> Date = Date.init, audio: AudioCueing = AudioService.shared) {
-        self.snapshot = ActiveWorkoutSnapshot(definition: definition, programID: programID)
+         now: @escaping () -> Date = Date.init, audio: AudioCueing? = nil) {
+        self.snapshot = ActiveWorkoutSnapshot(definition: definition, programID: programID,
+                                              getReadySeconds: WorkoutParameters.getReadySeconds)
         self.now = now
-        self.audio = audio
+        self.audio = audio ?? AudioService.shared
         self.displayNow = now()
     }
 
     init(snapshot: ActiveWorkoutSnapshot, now: @escaping () -> Date = Date.init,
-         audio: AudioCueing = AudioService.shared) {
-        self.snapshot = snapshot
+         audio: AudioCueing? = nil) {
+        var restored = snapshot
+        restored.getReadySeconds = snapshot.getReadySeconds ?? WorkoutParameters.getReadySeconds
+        self.snapshot = restored
         self.now = now
-        self.audio = audio
+        self.audio = audio ?? AudioService.shared
         self.displayNow = now()
         refresh()
     }
@@ -37,6 +40,11 @@ final class WorkoutRuntime: ObservableObject {
     var isComplete: Bool { snapshot.phase == .complete }
     var completedSetCount: Int { snapshot.results.filter(\.completed).count }
     var currentSetNumber: Int { snapshot.setIndex + 1 }
+    var isCurrentSetLogged: Bool {
+        guard let block else { return false }
+        return snapshot.results.contains { $0.blockID == block.id && $0.setIndex == snapshot.setIndex }
+    }
+    private var getReadySeconds: Int { snapshot.getReadySeconds ?? WorkoutParameters.getReadySeconds }
     var elapsed: TimeInterval {
         guard let startedAt = snapshot.startedAt else { return 0 }
         if snapshot.phase == .getReady { return 0 }
@@ -50,7 +58,7 @@ final class WorkoutRuntime: ObservableObject {
     var deadline: Date? {
         guard let block, let anchor = snapshot.phaseStartedAt, !isPaused else { return nil }
         switch snapshot.phase {
-        case .getReady: return anchor.addingTimeInterval(Double(WorkoutParameters.getReadySeconds))
+        case .getReady: return anchor.addingTimeInterval(Double(getReadySeconds))
         case .working where block.kind == .emom: return anchor.addingTimeInterval(60)
         case .working where block.kind.isTimed: return anchor.addingTimeInterval(Double(block.workSeconds))
         case .rest: return anchor.addingTimeInterval(Double(block.restSeconds))
@@ -60,7 +68,7 @@ final class WorkoutRuntime: ObservableObject {
     var remaining: TimeInterval? {
         guard let block else { return nil }
         switch snapshot.phase {
-        case .getReady: return max(0, Double(WorkoutParameters.getReadySeconds) - phaseElapsed)
+        case .getReady: return max(0, Double(getReadySeconds) - phaseElapsed)
         case .working where block.kind == .emom: return max(0, 60 - phaseElapsed)
         case .working where block.kind.isTimed: return max(0, Double(block.workSeconds) - phaseElapsed)
         case .rest: return max(0, Double(block.restSeconds) - phaseElapsed)
@@ -83,7 +91,7 @@ final class WorkoutRuntime: ObservableObject {
         persist()
         LiveActivityService.shared.start(workoutType: snapshot.definition.name,
                                          totalTarget: totalSets, mode: "workout",
-                                         getReadySeconds: WorkoutParameters.getReadySeconds)
+                                         getReadySeconds: getReadySeconds)
     }
 
     func refresh() {
@@ -100,11 +108,11 @@ final class WorkoutRuntime: ObservableObject {
             guard let block, let anchor = snapshot.phaseStartedAt else { break }
             switch snapshot.phase {
             case .getReady:
-                let deadline = anchor.addingTimeInterval(Double(WorkoutParameters.getReadySeconds))
+                let deadline = anchor.addingTimeInterval(Double(getReadySeconds))
                 guard date >= deadline else { return }
                 snapshot.phase = .working
                 snapshot.phaseStartedAt = deadline
-                snapshot.pausedDuration += Double(WorkoutParameters.getReadySeconds)
+                snapshot.pausedDuration += Double(getReadySeconds)
                 persist()
                 if date.timeIntervalSince(deadline) < 1 {
                     audio.playGoBeep()
@@ -141,6 +149,7 @@ final class WorkoutRuntime: ObservableObject {
 
     /// Marks an EMOM set as underway. Its minute may then run late until it is logged.
     func beginSet() {
+        refresh()
         guard snapshot.phase == .working, !isPaused, block?.kind == .emom,
               snapshot.activeSetStartedAt == nil,
               !snapshot.results.contains(where: { $0.blockID == block?.id && $0.setIndex == snapshot.setIndex })
@@ -150,6 +159,7 @@ final class WorkoutRuntime: ObservableObject {
     }
 
     func pause() {
+        refresh()
         guard snapshot.startedAt != nil, snapshot.phase != .complete,
               snapshot.pausedAt == nil else { return }
         snapshot.pausedAt = now()
@@ -190,12 +200,12 @@ final class WorkoutRuntime: ObservableObject {
         } else if block.kind == .interval {
             persist() // The work/rest clock controls interval transitions.
         } else {
-            advanceSet(at: date, resting: block.kind == .rounds || block.kind == .ladder)
+            advanceSet(at: date, resting: block.kind == .rounds)
         }
     }
 
     func undo() {
-        guard let result = snapshot.results.last,
+        guard !isPaused, let result = snapshot.results.last,
               let block = snapshot.definition.blocks.first(where: { $0.id == result.blockID }),
               snapshot.blockIndex == snapshot.definition.blocks.firstIndex(where: { $0.id == result.blockID })
         else { return }
@@ -248,7 +258,8 @@ final class WorkoutRuntime: ObservableObject {
     }
 
     func discard() {
-        ActiveWorkoutStore.clear()
+        do { try ActiveWorkoutStore.clear() }
+        catch { persistenceError = error.localizedDescription; return }
         NotificationService.cancelWorkoutCue()
         LiveActivityService.shared.end(currentRound: completedSetCount,
                                        totalRounds: totalSets, elapsedSeconds: elapsed, mode: "workout")
@@ -302,6 +313,8 @@ final class WorkoutRuntime: ObservableObject {
         persist()
     }
 
+    func retryPersistence() { persist() }
+
     private var totalSets: Int { snapshot.definition.blocks.reduce(0) { $0 + $1.targetSets } }
 
     private func advanceSet(at date: Date, resting: Bool) {
@@ -320,7 +333,12 @@ final class WorkoutRuntime: ObservableObject {
             snapshot.phaseStartedAt = date
             persist()
             if date.timeIntervalSince(now()) > -1 {
-                if snapshot.phase == .working { audio.playGoBeep(); audio.announce("Work") }
+                if snapshot.phase == .working {
+                    audio.playGoBeep()
+                    if block.kind == .ladder {
+                        audio.announce("Ladder \(snapshot.setIndex / block.rungs.count + 1), \(block.rungs[snapshot.setIndex % block.rungs.count]) reps")
+                    } else { audio.announce("Round \(snapshot.setIndex + 1)") }
+                }
                 else if snapshot.phase == .rest { audio.announce("Rest") }
             }
         }
@@ -366,7 +384,7 @@ final class WorkoutRuntime: ObservableObject {
             persistenceError = error.localizedDescription
         }
         guard snapshot.startedAt != nil, snapshot.phase != .complete else { return }
-        LiveActivityService.shared.update(phase: snapshot.phase.rawValue,
+        LiveActivityService.shared.update(phase: isPaused ? "paused" : snapshot.phase.rawValue,
                                           currentRound: completedSetCount,
                                           totalRounds: totalSets,
                                           elapsedSeconds: elapsed, mode: "workout",

@@ -32,8 +32,8 @@ struct RuntimeHarness {
     @MainActor
     static func main() throws {
         UserDefaults.standard.set(5, forKey: "kb_pref_getReady")
-        ActiveWorkoutStore.clear()
-        defer { ActiveWorkoutStore.clear() }
+        try ActiveWorkoutStore.clear()
+        defer { try? ActiveWorkoutStore.clear() }
 
         do {
             let clock = Clock()
@@ -43,6 +43,9 @@ struct RuntimeHarness {
             runtime.start()
             expect(runtime.elapsed == 0, "get-ready countdown excluded from elapsed")
             expect(runtime.deadline == clock.date.addingTimeInterval(5), "get-ready deadline")
+            UserDefaults.standard.set(10, forKey: "kb_pref_getReady")
+            expect(runtime.deadline == clock.date.addingTimeInterval(5), "get-ready setting frozen per workout")
+            UserDefaults.standard.set(5, forKey: "kb_pref_getReady")
             clock.advance(126)
             runtime.refresh()
             expect(runtime.snapshot.setIndex == 2, "EMOM catch-up index")
@@ -74,6 +77,18 @@ struct RuntimeHarness {
             runtime.beginSet()
             expect(runtime.snapshot.activeSetStartedAt == nil,
                    "logged EMOM slot cannot be started again")
+        }
+
+        do {
+            let clock = Clock()
+            let runtime = WorkoutRuntime(definition: .init(name: "Ladder", blocks: [block(.ladder, rounds: 2, rest: 60)]),
+                                         now: { clock.date })
+            runtime.start()
+            clock.advance(5)
+            runtime.refresh()
+            runtime.logSet(repetitions: [.init(name: "Press", reps: 2)])
+            expect(runtime.snapshot.phase == .working && runtime.snapshot.setIndex == 1,
+                   "ladder advances without forced rest")
         }
 
         do {
@@ -159,6 +174,6 @@ struct RuntimeHarness {
         invalid.blocks[0].loadKg = .nan
         expect(invalid.validationError != nil, "non-finite loads rejected")
 
-        print("runtime_harness: 8 scenarios passed")
+        print("runtime_harness: 9 scenarios passed")
     }
 }

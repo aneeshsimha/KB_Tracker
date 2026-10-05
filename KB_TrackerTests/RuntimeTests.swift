@@ -190,7 +190,7 @@ struct RuntimeTests {
     }
 
     @Test func undoAfterCompletionRestoresAFullDurableCheckpoint() throws {
-        defer { ActiveWorkoutStore.clear() }
+        defer { try? ActiveWorkoutStore.clear() }
         let clock = Clock()
         let runtime = WorkoutRuntime(definition: definition(kind: .rounds, rounds: 1), now: { clock.date })
         runtime.start()
@@ -228,7 +228,7 @@ struct RuntimeTests {
     }
 
     @Test func CreatingSessionDoesNotClearCheckpointBeforeRepositorySave() {
-        defer { ActiveWorkoutStore.clear() }
+        defer { try? ActiveWorkoutStore.clear() }
         let clock = Clock()
         let runtime = WorkoutRuntime(definition: definition(kind: .rounds, rounds: 1), now: { clock.date })
         runtime.start()

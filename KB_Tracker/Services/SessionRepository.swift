@@ -7,7 +7,12 @@ import SwiftData
         let existing = try context.fetch(FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.id == id }))
         let isNew = existing.isEmpty
         if isNew { context.insert(session) }
-        else if let stored = existing.first, stored !== session { return }
+        else if let stored = existing.first, stored !== session {
+            // A failed save can leave the first insertion in this context. Retry
+            // persistence before allowing the caller to clear its recovery file.
+            try context.save()
+            return
+        }
         session.modifiedAt = Date()
         if isNew, let programID = session.programID {
             let programs = try context.fetch(FetchDescriptor<TrainingProgram>())
