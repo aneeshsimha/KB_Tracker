@@ -70,4 +70,38 @@ final class ProgramTests: XCTestCase {
         XCTAssertEqual(ProgramService.nextDefinition(program: program).id, press.id)
         XCTAssertEqual(program.abcMinutes, 10)
     }
+
+    func testExplicitBuiltInChoiceIgnoresCurrentOverride() {
+        let program = TrainingProgram()
+        program.nextOverride = ProgramService.builtInDefinition(program: program, type: .press)
+        XCTAssertEqual(ProgramService.nextDefinition(program: program).workoutType, .press)
+        XCTAssertEqual(ProgramService.builtInDefinition(program: program, type: .abc).workoutType, .abc)
+        XCTAssertEqual(program.nextIndex, 0)
+    }
+
+    func testPrescriptionComparisonNormalizesMovementNames() {
+        var first = WorkoutDefinition.builtIn(.emom(kettlebellType: .double, weight: 16, minutes: 10))
+        var second = first
+        second.blocks[0].movements[0].name = "  CLEAN  "
+        XCTAssertEqual(ProgramService.prescriptionKey(first), ProgramService.prescriptionKey(second))
+        first.blocks[0].movements[0].reps = 3
+        XCTAssertNotEqual(ProgramService.prescriptionKey(first), ProgramService.prescriptionKey(second))
+    }
+
+    func testRescheduleHistoryPersistsAfterActiveOverrideClears() {
+        let program = TrainingProgram()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let sunday = calendar.date(from: DateComponents(year: 2026, month: 10, day: 4))!
+        let original = calendar.date(byAdding: .day, value: 1, to: sunday)!
+        let moved = calendar.date(byAdding: .day, value: 2, to: sunday)!
+        program.rescheduleHistory = [ProgramReschedule(plannedDate: original, movedDate: moved)]
+        program.rescheduledDate = moved
+        program.rescheduledDate = nil
+        XCTAssertEqual(program.rescheduleHistory.first?.movedDate, moved)
+        let dates = ProgramService.plannedDates(program: program, inWeekStarting: sunday, calendar: calendar)
+        XCTAssertEqual(dates.count, 3)
+        XCTAssertTrue(dates.contains(moved))
+        XCTAssertFalse(dates.contains(original))
+    }
 }

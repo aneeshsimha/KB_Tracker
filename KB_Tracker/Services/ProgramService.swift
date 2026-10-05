@@ -1,6 +1,22 @@
 import Foundation
 
 enum ProgramService {
+    static func plannedDates(program: TrainingProgram, inWeekStarting start: Date, calendar: Calendar = .current) -> [Date] {
+        let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
+        var dates = (0..<7).compactMap { offset -> Date? in
+            guard program.weekdays.contains(offset + 1) else { return nil }
+            return calendar.date(byAdding: .day, value: offset, to: start)
+        }
+        for change in program.rescheduleHistory {
+            dates.removeAll { calendar.isDate($0, inSameDayAs: change.plannedDate) }
+            if change.movedDate >= start && change.movedDate < end,
+               !dates.contains(where: { calendar.isDate($0, inSameDayAs: change.movedDate) }) {
+                dates.append(calendar.startOfDay(for: change.movedDate))
+            }
+        }
+        return dates.sorted()
+    }
+
     static func nextDefinition(program: TrainingProgram) -> WorkoutDefinition {
         if let override = program.nextOverride, override.validationError == nil { return override }
         let templates = program.templateDefinitions.filter { $0.validationError == nil }
@@ -52,7 +68,7 @@ enum ProgramService {
         }
         let targetKey = target.rawValue
         program.streakTargetRaw = targetKey
-        let prescriptionKey = prescribed?.comparisonKey ?? "\(session.mode.rawValue):\(session.weight):\(session.targetRounds):\(session.targetLadders)"
+        let prescriptionKey = prescribed.map { Self.prescriptionKey($0) } ?? "\(session.mode.rawValue):\(session.weight):\(session.targetRounds):\(session.targetLadders)"
         if target == .press {
             if program.pressStreakKey != prescriptionKey { clearStreaks(target: target, program: program); program.pressStreakKey = prescriptionKey }
         } else if program.abcStreakKey != prescriptionKey {
@@ -88,6 +104,16 @@ enum ProgramService {
     private static func clearStreaks(target: WorkoutType, program: TrainingProgram) {
         if target == .press { program.pressSuccessStreak = 0; program.pressStruggleStreak = 0 }
         if target == .abc { program.abcSuccessStreak = 0; program.abcStruggleStreak = 0 }
+    }
+
+    static func prescriptionKey(_ definition: WorkoutDefinition) -> String {
+        definition.blocks.map { block in
+            let movements = block.movements.map { movement in
+                let name = movement.name.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").lowercased()
+                return "\(name):\(movement.reps.map(String.init) ?? "?"):\(movement.perSide)"
+            }.joined(separator: ";")
+            return "\(block.kind.rawValue):\(block.loadKg):\(block.bells):\(block.rounds):\(block.workSeconds):\(block.restSeconds):\(block.rungs):\(movements)"
+        }.joined(separator: "|")
     }
 
     static func approveNextBell(program: TrainingProgram, weightKg: Double) {

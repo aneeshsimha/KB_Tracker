@@ -10,6 +10,7 @@ struct EquipmentView: View {
     @State private var count = 1
     @State private var unit: WeightUnit = .kg
     @State private var error: String?
+    @State private var saveError: String?
 
     var body: some View {
         ScrollView {
@@ -35,7 +36,7 @@ struct EquipmentView: View {
                         }
                         Spacer()
                         Button { beginEdit(bell) } label: { Image(systemName: "pencil").foregroundStyle(AppColors.ink2) }
-                        Button(role: .destructive) { context.delete(bell); try? context.save() } label: { Image(systemName: "trash").foregroundStyle(AppColors.red) }
+                        Button(role: .destructive) { context.delete(bell); persist() } label: { Image(systemName: "trash").foregroundStyle(AppColors.red) }
                     }
                     .padding(16).kbCard()
                 }
@@ -75,6 +76,9 @@ struct EquipmentView: View {
             }
             .preferredColorScheme(.dark)
         }
+        .alert("Could not save equipment", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: { Text(saveError ?? "Please try again.") }
     }
 
     private func beginEdit(_ bell: EquipmentRecord?) {
@@ -96,7 +100,11 @@ struct EquipmentView: View {
         } else {
             context.insert(EquipmentRecord(weightKg: kg, count: count))
         }
-        try? context.save()
-        showingEditor = false
+        if persist() { showingEditor = false }
+    }
+
+    @discardableResult private func persist() -> Bool {
+        do { try context.save(); return true }
+        catch { saveError = error.localizedDescription; return false }
     }
 }

@@ -97,6 +97,8 @@ struct WorkoutEditorView: View {
                         Text(block.name.isEmpty ? "Block" : block.name)
                     }
                 }
+                .onMove { source, destination in definition.blocks.move(fromOffsets: source, toOffset: destination) }
+                .onDelete { offsets in definition.blocks.remove(atOffsets: offsets) }
                 Section {
                     Button("Add block") { definition.blocks.append(WorkoutBlock(name: "New block")) }
                     if attemptedSave, let message = definition.validationError { error(message) }
@@ -109,6 +111,7 @@ struct WorkoutEditorView: View {
             .navigationTitle("Workout builder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) { EditButton() }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         attemptedSave = true

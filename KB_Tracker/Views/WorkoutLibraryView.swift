@@ -8,6 +8,7 @@ struct WorkoutLibraryView: View {
     @State private var editing: WorkoutDefinition?
     @State private var running: WorkoutDefinition?
     @State private var confirmDelete: UUID?
+    @State private var saveError: String?
 
     private var presets: [WorkoutDefinition] {
         [
@@ -51,7 +52,7 @@ struct WorkoutLibraryView: View {
             WorkoutEditorView(definition: definition) { saved in
                 if let existing = templates.first(where: { $0.id == saved.id }) { existing.definition = saved }
                 else { context.insert(WorkoutTemplate(definition: saved)) }
-                try? context.save()
+                persist()
             }
         }
         .navigationDestination(item: $running) { definition in
@@ -59,11 +60,14 @@ struct WorkoutLibraryView: View {
         }
         .alert("Delete workout?", isPresented: Binding(get: { confirmDelete != nil }, set: { if !$0 { confirmDelete = nil } })) {
             Button("Delete", role: .destructive) {
-                if let id = confirmDelete, let template = templates.first(where: { $0.id == id }) { context.delete(template); try? context.save() }
+                if let id = confirmDelete, let template = templates.first(where: { $0.id == id }) { context.delete(template); persist() }
                 confirmDelete = nil
             }
             Button("Cancel", role: .cancel) { confirmDelete = nil }
         } message: { Text("This removes the saved template. Past sessions stay in history.") }
+        .alert("Could not save workout", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK") { saveError = nil }
+        } message: { Text(saveError ?? "Please try again.") }
     }
 
     private func group(_ title: String, _ items: [WorkoutTemplate]) -> some View {
@@ -91,7 +95,7 @@ struct WorkoutLibraryView: View {
                 }
                 Spacer()
                 if let template {
-                    Button { template.isFavorite.toggle(); try? context.save() } label: {
+                    Button { template.isFavorite.toggle(); template.modifiedAt = Date(); persist() } label: {
                         Image(systemName: template.isFavorite ? "star.fill" : "star")
                             .foregroundStyle(template.isFavorite ? AppColors.green : AppColors.ink2)
                     }
@@ -109,7 +113,7 @@ struct WorkoutLibraryView: View {
                         copy.id = UUID()
                         copy.name += " copy"
                         context.insert(WorkoutTemplate(definition: copy))
-                        try? context.save()
+                        persist()
                     }
                     Button("Delete", role: .destructive) { confirmDelete = template.id }
                 }
@@ -119,5 +123,10 @@ struct WorkoutLibraryView: View {
         }
         .padding(16)
         .kbCard()
+    }
+
+    private func persist() {
+        do { try context.save() }
+        catch { saveError = error.localizedDescription }
     }
 }

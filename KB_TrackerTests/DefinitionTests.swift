@@ -29,4 +29,17 @@ final class DefinitionTests: XCTestCase {
         XCTAssertEqual(kilograms, 15.875233, accuracy: 0.000001)
         XCTAssertEqual(WeightUnit.lb.display(kilograms), 35, accuracy: 0.000001)
     }
+
+    func testRungDraftRejectsIncompleteInputWithoutDroppingIt() {
+        XCTAssertNil(WorkoutEditorView.parseRungs("2,"))
+        XCTAssertNil(WorkoutEditorView.parseRungs("2, no"))
+        XCTAssertEqual(WorkoutEditorView.parseRungs("2, 3, 5"), [2, 3, 5])
+    }
+
+    func testEditedBuiltinStructureBecomesCustom() {
+        var abc = WorkoutDefinition.builtIn(.emom(kettlebellType: .double, weight: 16, minutes: 10))
+        XCTAssertTrue(WorkoutEditorView.preservesBuiltinIdentity(abc))
+        abc.blocks[0].movements[0].reps = 3
+        XCTAssertFalse(WorkoutEditorView.preservesBuiltinIdentity(abc))
+    }
 }

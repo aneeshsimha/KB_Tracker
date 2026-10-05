@@ -22,7 +22,7 @@ import UserNotifications
             dates.append(date)
             if dates.count == 32 { break }
         }
-        if let override, override > now {
+        if let override, let override = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: override), override > now {
             if !dates.isEmpty { dates.removeFirst() }
             dates.insert(override, at: 0)
         }

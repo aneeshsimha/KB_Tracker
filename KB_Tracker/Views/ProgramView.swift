@@ -294,7 +294,7 @@ struct ProgramView: View {
         let weekday = calendar.component(.weekday, from: today)
         let start = calendar.date(byAdding: .day, value: -(weekday - 1), to: calendar.startOfDay(for: today)) ?? today
         let weekSessions = sessions.filter { $0.programID == program.id && $0.isCompleted && $0.date >= start }
-        let plannedDates = plannedDates(program, inWeekStarting: start)
+        let plannedDates = ProgramService.plannedDates(program: program, inWeekStarting: start)
         let planned = plannedDates.count
         let completedPlanned = plannedDates.filter { date in
             weekSessions.contains { calendar.isDate($0.date, inSameDayAs: date) }
@@ -333,22 +333,6 @@ struct ProgramView: View {
         Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
     }
 
-    private func plannedDates(_ program: TrainingProgram, inWeekStarting start: Date) -> [Date] {
-        let calendar = Calendar.current
-        let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
-        var dates = (0..<7).compactMap { offset -> Date? in
-            guard program.weekdays.contains(offset + 1) else { return nil }
-            return calendar.date(byAdding: .day, value: offset, to: start)
-        }
-        for change in program.rescheduleHistory {
-            dates.removeAll { calendar.isDate($0, inSameDayAs: change.plannedDate) }
-            if change.movedDate >= start && change.movedDate < end, !dates.contains(where: { calendar.isDate($0, inSameDayAs: change.movedDate) }) {
-                dates.append(calendar.startOfDay(for: change.movedDate))
-            }
-        }
-        return dates.sorted()
-    }
-
     private func reschedule(_ program: TrainingProgram) {
         guard rescheduleDate >= earliestRescheduleDate else { return }
         let calendar = Calendar.current
@@ -382,7 +366,10 @@ struct ProgramView: View {
     private func refreshReminder(_ program: TrainingProgram) {
         Task { @MainActor in
             if program.remindersEnabled {
-                await NotificationService.scheduleProgram(days: program.weekdays, hour: program.reminderHour, minute: program.reminderMinute, override: program.rescheduledDate)
+                let reminderOverride = program.rescheduledDate.flatMap {
+                    Calendar.current.date(bySettingHour: program.reminderHour, minute: program.reminderMinute, second: 0, of: $0)
+                }
+                await NotificationService.scheduleProgram(days: program.weekdays, hour: program.reminderHour, minute: program.reminderMinute, override: reminderOverride)
                 let settings = await UNUserNotificationCenter.current().notificationSettings()
                 reminderMessage = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
                     ? nil : "Notifications are off. Enable them in iPhone Settings to receive reminders."
