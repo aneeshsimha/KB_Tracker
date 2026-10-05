@@ -39,7 +39,7 @@ enum LegacySessionSchema: VersionedSchema {
     static var models: [any PersistentModel.Type] { [WorkoutSession.self] }
 
     @Model final class WorkoutSession {
-        var id: UUID = UUID(); var date: Date = .now; var modeRaw = "emom"; var kettlebellTypeRaw = "double"; var weight = 20
+        var id: UUID = UUID(); var date: Date = Date(); var modeRaw = "emom"; var kettlebellTypeRaw = "double"; var weight = 20
         var targetRounds = 20; var completedRounds = 0; var totalDuration: TimeInterval = 0; var restDuration: Int? = nil
         var setTimes: [TimeInterval] = []; var notes: String? = nil; var isCompleted = false; var workoutTypeRaw = "abc"
         var targetLadders = 0; var ladderReps: [Int] = []

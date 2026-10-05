@@ -15,8 +15,12 @@ struct ProgramView: View {
     @State private var movingDay: Int?
     @State private var reminderMessage: String?
     @State private var saveError: String?
+    @AppStorage("kb_weight_unit") private var weightUnit: WeightUnit = .kg
 
-    private var program: TrainingProgram? { programs.first }
+    private var program: TrainingProgram? {
+        programs.filter(\.isActive).max(by: { $0.modifiedAt < $1.modifiedAt })
+            ?? programs.max(by: { $0.modifiedAt < $1.modifiedAt })
+    }
     private let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
     var body: some View {
@@ -79,7 +83,7 @@ struct ProgramView: View {
                                 Text("Add a heavier \(needed == 2 ? "pair" : "bell") in Equipment to continue.")
                             }
                             ForEach(eligible) { bell in
-                                Button(WeightUnit.kg.label(bell.weightKg, bells: needed)) { bellSelection = bell.weightKg }
+                                Button(weightUnit.label(bell.weightKg, bells: needed)) { bellSelection = bell.weightKg }
                                     .foregroundStyle(bellSelection == bell.weightKg ? AppColors.green : AppColors.ink)
                             }
                         }
@@ -109,7 +113,7 @@ struct ProgramView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Eyebrow("UP NEXT")
             Text(definition.name).font(AppTypography.titleMd).foregroundStyle(AppColors.ink)
-            Text(definition.blocks.map { "\($0.name) · \($0.rounds) \($0.kind == .emom ? "min" : $0.kind == .ladder ? "ladders" : "rounds") · \(WeightUnit.kg.label($0.loadKg, bells: $0.bells))" }.joined(separator: "\n"))
+            Text(definition.blocks.map { "\($0.name) · \($0.rounds) \($0.kind == .emom ? "min" : $0.kind == .ladder ? "ladders" : "rounds") · \(weightUnit.label($0.loadKg, bells: $0.bells))" }.joined(separator: "\n"))
                 .font(AppTypography.mono(12)).foregroundStyle(AppColors.ink2)
             Text("Planned \(nextDate(program).formatted(date: .abbreviated, time: .omitted))")
                 .font(AppTypography.mono(12)).foregroundStyle(AppColors.ink3)
@@ -201,25 +205,25 @@ struct ProgramView: View {
                     else { program.abcRounds = max(1, program.abcRounds - 1); program.abcStartRounds = program.abcRounds }; persist(program)
                 })
                 Stepper("Press ladders: \(program.pressLadders)", value: Binding(get: { program.pressLadders }, set: { program.pressLadders = $0; program.pressStartLadders = $0; persist(program) }), in: 1...10)
-                Menu("ABC bells: \(WeightUnit.kg.label(program.abcWeightKg, bells: program.abcBells))") {
+                Menu("ABC bells: \(weightUnit.label(program.abcWeightKg, bells: program.abcBells))") {
                     ForEach(bells) { bell in
-                        Button(WeightUnit.kg.label(bell.weightKg)) {
+                        Button(weightUnit.label(bell.weightKg)) {
                             program.abcWeightKg = bell.weightKg; program.abcBells = 1; persist(program)
                         }
                         if bell.count >= 2 {
-                            Button(WeightUnit.kg.label(bell.weightKg, bells: 2)) {
+                            Button(weightUnit.label(bell.weightKg, bells: 2)) {
                                 program.abcWeightKg = bell.weightKg; program.abcBells = 2; persist(program)
                             }
                         }
                     }
                 }
-                Menu("Press bells: \(WeightUnit.kg.label(program.pressWeightKg, bells: program.pressBells))") {
+                Menu("Press bells: \(weightUnit.label(program.pressWeightKg, bells: program.pressBells))") {
                     ForEach(bells) { bell in
-                        Button(WeightUnit.kg.label(bell.weightKg)) {
+                        Button(weightUnit.label(bell.weightKg)) {
                             program.pressWeightKg = bell.weightKg; program.pressBells = 1; persist(program)
                         }
                         if bell.count >= 2 {
-                            Button(WeightUnit.kg.label(bell.weightKg, bells: 2)) {
+                            Button(weightUnit.label(bell.weightKg, bells: 2)) {
                                 program.pressWeightKg = bell.weightKg; program.pressBells = 2; persist(program)
                             }
                         }
@@ -359,7 +363,10 @@ struct ProgramView: View {
 
     private func persist(_ program: TrainingProgram) {
         program.modifiedAt = Date()
-        do { try context.save() }
+        do {
+            try context.save()
+            WidgetSnapshotService.refresh(context: context)
+        }
         catch { saveError = error.localizedDescription }
     }
 

@@ -34,7 +34,7 @@ struct StartPresetIntent: AppIntent {
     static var title: LocalizedStringResource = "Start workout preset"
     static var openAppWhenRun = true
     @Parameter(title: "Preset") var preset: PresetEntity
-    func perform() async throws -> some IntentResult {
+    @MainActor func perform() async throws -> some IntentResult {
         WorkoutLaunchRequest.enqueue(.init(action: .preset, presetID: preset.id))
         return .result()
     }
@@ -42,7 +42,7 @@ struct StartPresetIntent: AppIntent {
 struct RepeatWorkoutIntent: AppIntent {
     static var title: LocalizedStringResource = "Repeat last workout"
     static var openAppWhenRun = true
-    func perform() async throws -> some IntentResult {
+    @MainActor func perform() async throws -> some IntentResult {
         WorkoutLaunchRequest.enqueue(.init(action: .repeatLast))
         return .result()
     }
@@ -50,7 +50,7 @@ struct RepeatWorkoutIntent: AppIntent {
 struct NextWorkoutIntent: AppIntent {
     static var title: LocalizedStringResource = "Open next workout"
     static var openAppWhenRun = true
-    func perform() async throws -> some IntentResult {
+    @MainActor func perform() async throws -> some IntentResult {
         WorkoutLaunchRequest.enqueue(.init(action: .next))
         return .result()
     }
