@@ -26,15 +26,14 @@ enum BackupService {
         var rescheduleHistoryData: Data = Data("[]".utf8)
         var id: UUID; var name: String; var isActive: Bool; var weekdaysData: Data; var remindersEnabled: Bool; var reminderHour: Int; var reminderMinute: Int; var autoProgress: Bool; var usesTemplates: Bool; var templateDefinitionsData: Data; var nextIndex: Int; var nextOverrideData: Data?; var rescheduledDate: Date?; var abcModeRaw: String; var abcMinutes: Int; var abcRounds: Int; var abcStartMinutes: Int; var abcStartRounds: Int; var abcRestSeconds: Int; var abcWeightKg: Double; var abcBells: Int; var pressLadders: Int; var pressStartLadders: Int; var pressWeightKg: Double; var pressBells: Int; var abcSuccessStreak: Int; var abcStruggleStreak: Int; var pressSuccessStreak: Int; var pressStruggleStreak: Int; var abcStreakKey: String; var pressStreakKey: String; var streakTargetRaw: String; var decisionHistoryData: Data; var pendingBellTargetRaw: String; var evaluatedSessionIDsData: Data; var lastDecision: String; var pendingBellApproval: Bool; var modifiedAt: Date
         init(_ p: TrainingProgram) { id=p.id; name=p.name; isActive=p.isActive; weekdaysData=p.weekdaysData; remindersEnabled=p.remindersEnabled; reminderHour=p.reminderHour; reminderMinute=p.reminderMinute; autoProgress=p.autoProgress; usesTemplates=p.usesTemplates; templateDefinitionsData=p.templateDefinitionsData; nextIndex=p.nextIndex; nextOverrideData=p.nextOverrideData; rescheduledDate=p.rescheduledDate; abcModeRaw=p.abcModeRaw; abcMinutes=p.abcMinutes; abcRounds=p.abcRounds; abcStartMinutes=p.abcStartMinutes; abcStartRounds=p.abcStartRounds; abcRestSeconds=p.abcRestSeconds; abcWeightKg=p.abcWeightKg; abcBells=p.abcBells; pressLadders=p.pressLadders; pressStartLadders=p.pressStartLadders; pressWeightKg=p.pressWeightKg; pressBells=p.pressBells; abcSuccessStreak=p.abcSuccessStreak; abcStruggleStreak=p.abcStruggleStreak; pressSuccessStreak=p.pressSuccessStreak; pressStruggleStreak=p.pressStruggleStreak; abcStreakKey=p.abcStreakKey; pressStreakKey=p.pressStreakKey; streakTargetRaw=p.streakTargetRaw; decisionHistoryData=p.decisionHistoryData; pendingBellTargetRaw=p.pendingBellTargetRaw; evaluatedSessionIDsData=p.evaluatedSessionIDsData; lastDecision=p.lastDecision; pendingBellApproval=p.pendingBellApproval; modifiedAt=p.modifiedAt }
+        init(backup p: TrainingProgram) { self.init(p); rescheduleHistoryData = p.rescheduleHistoryData }
     }
     struct Preview { let archive: Archive; let newSessions: Int; let updates: Int }
     enum Error: LocalizedError { case unsupportedVersion, invalid(String); var errorDescription: String? { switch self { case .unsupportedVersion: return "This backup uses an unsupported version."; case .invalid(let value): return value } } }
 
     static func archive(context: ModelContext) throws -> Archive {
         let programs = try context.fetch(FetchDescriptor<TrainingProgram>()).map { program -> ProgramRecord in
-            var record = ProgramRecord(program)
-            record.rescheduleHistoryData = program.rescheduleHistoryData
-            return record
+            ProgramRecord(backup: program)
         }
         return Archive(sessions: try context.fetch(FetchDescriptor<WorkoutSession>()).map(SessionRecord.init), templates: try context.fetch(FetchDescriptor<WorkoutTemplate>()).map(TemplateRecord.init), equipment: try context.fetch(FetchDescriptor<EquipmentRecord>()).map(EquipmentBackupRecord.init), programs: programs)
     }
@@ -63,16 +62,16 @@ enum BackupService {
                 throw Error.invalid("Apple Health workout \(healthID) already belongs to another session.")
             }
         }
-        var byID = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
+        var byID = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { $0.modifiedAt >= $1.modifiedAt ? $0 : $1 })
         for record in preview.archive.sessions {
             if let session = byID[record.id] { if record.modifiedAt > session.modifiedAt { record.apply(to: session) } }
             else { let session = WorkoutSession(); record.apply(to: session); context.insert(session); byID[record.id] = session }
         }
-        var templates = Dictionary(try context.fetch(FetchDescriptor<WorkoutTemplate>()).map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
+        var templates = Dictionary(try context.fetch(FetchDescriptor<WorkoutTemplate>()).map { ($0.id, $0) }, uniquingKeysWith: { $0.modifiedAt >= $1.modifiedAt ? $0 : $1 })
         for r in preview.archive.templates { let isNew = templates[r.id] == nil; let m = templates[r.id] ?? WorkoutTemplate(definition: WorkoutDefinition(name: r.name, blocks: [WorkoutBlock()])); if isNew { context.insert(m); templates[r.id] = m }; if isNew || r.modifiedAt > m.modifiedAt { m.id=r.id; m.name=r.name; m.definitionData=r.definitionData; m.isFavorite=r.isFavorite; m.modifiedAt=r.modifiedAt } }
-        var equipment = Dictionary(try context.fetch(FetchDescriptor<EquipmentRecord>()).map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
+        var equipment = Dictionary(try context.fetch(FetchDescriptor<EquipmentRecord>()).map { ($0.id, $0) }, uniquingKeysWith: { $0.modifiedAt >= $1.modifiedAt ? $0 : $1 })
         for r in preview.archive.equipment { let isNew = equipment[r.id] == nil; let m = equipment[r.id] ?? EquipmentRecord(weightKg: r.weightKg, count: r.count); if isNew { context.insert(m); equipment[r.id] = m }; if isNew || r.modifiedAt > m.modifiedAt { m.id=r.id; m.weightKg=r.weightKg; m.count=r.count; m.modifiedAt=r.modifiedAt } }
-        var programs = Dictionary(try context.fetch(FetchDescriptor<TrainingProgram>()).map { ($0.id, $0) }, uniquingKeysWith: { max($0, $1, by: { $0.modifiedAt < $1.modifiedAt }) })
+        var programs = Dictionary(try context.fetch(FetchDescriptor<TrainingProgram>()).map { ($0.id, $0) }, uniquingKeysWith: { $0.modifiedAt >= $1.modifiedAt ? $0 : $1 })
         for r in preview.archive.programs { let isNew = programs[r.id] == nil; let p = programs[r.id] ?? TrainingProgram(); if isNew { context.insert(p); programs[r.id] = p }; if isNew || r.modifiedAt > p.modifiedAt { apply(r, to: p) } }
         // `rescheduleHistoryData` was added after the original record shape;
         // copy it after the normal newest-record merge has selected its winner.
@@ -84,17 +83,39 @@ enum BackupService {
         do { try context.save() } catch { context.rollback(); throw error }
     }
     private static func apply(_ r: ProgramRecord, to p: TrainingProgram) { p.id=r.id;p.name=r.name;p.isActive=r.isActive;p.weekdaysData=r.weekdaysData;p.remindersEnabled=r.remindersEnabled;p.reminderHour=r.reminderHour;p.reminderMinute=r.reminderMinute;p.autoProgress=r.autoProgress;p.usesTemplates=r.usesTemplates;p.templateDefinitionsData=r.templateDefinitionsData;p.nextIndex=r.nextIndex;p.nextOverrideData=r.nextOverrideData;p.rescheduledDate=r.rescheduledDate;p.abcModeRaw=r.abcModeRaw;p.abcMinutes=r.abcMinutes;p.abcRounds=r.abcRounds;p.abcStartMinutes=r.abcStartMinutes;p.abcStartRounds=r.abcStartRounds;p.abcRestSeconds=r.abcRestSeconds;p.abcWeightKg=r.abcWeightKg;p.abcBells=r.abcBells;p.pressLadders=r.pressLadders;p.pressStartLadders=r.pressStartLadders;p.pressWeightKg=r.pressWeightKg;p.pressBells=r.pressBells;p.abcSuccessStreak=r.abcSuccessStreak;p.abcStruggleStreak=r.abcStruggleStreak;p.pressSuccessStreak=r.pressSuccessStreak;p.pressStruggleStreak=r.pressStruggleStreak;p.abcStreakKey=r.abcStreakKey;p.pressStreakKey=r.pressStreakKey;p.streakTargetRaw=r.streakTargetRaw;p.decisionHistoryData=r.decisionHistoryData;p.pendingBellTargetRaw=r.pendingBellTargetRaw;p.evaluatedSessionIDsData=r.evaluatedSessionIDsData;p.lastDecision=r.lastDecision;p.pendingBellApproval=r.pendingBellApproval;p.modifiedAt=r.modifiedAt }
-    private static func validate(_ archive: Archive) throws {
+    static func validate(_ archive: Archive) throws {
         guard archive.version == currentVersion else { throw Error.unsupportedVersion }
         guard Set(archive.sessions.map(\.id)).count == archive.sessions.count else { throw Error.invalid("The backup contains duplicate session IDs.") }
         guard Set(archive.templates.map(\.id)).count == archive.templates.count, Set(archive.equipment.map(\.id)).count == archive.equipment.count, Set(archive.programs.map(\.id)).count == archive.programs.count else { throw Error.invalid("The backup contains duplicate record IDs.") }
         let healthIDs = archive.sessions.compactMap(\.healthWorkoutID); guard Set(healthIDs).count == healthIDs.count else { throw Error.invalid("The backup contains duplicate Apple Health workout IDs.") }
         for s in archive.sessions {
-            guard WorkoutMode(rawValue: s.modeRaw) != nil, KBType(rawValue: s.kettlebellTypeRaw) != nil, WorkoutType(rawValue: s.workoutTypeRaw) != nil, s.schemaVersion == 1, s.totalDuration.isFinite, s.totalDuration >= 0, s.weight >= 0, s.targetRounds >= 0, s.completedRounds >= 0 else { throw Error.invalid("A session has invalid measurements.") }
-            if let data = s.definitionData { guard let definition = try? JSONDecoder().decode(WorkoutDefinition.self, from: data), definition.validationError == nil else { throw Error.invalid("A workout definition is invalid.") }; if let results = s.resultsData { guard let decoded = try? JSONDecoder().decode([WorkoutSetResult].self, from: results), decoded.allSatisfy({ result in definition.blocks.contains(where: { block in block.id == result.blockID }) }) else { throw Error.invalid("Workout results are invalid.") } } }
+            guard WorkoutMode(rawValue: s.modeRaw) != nil, KBType(rawValue: s.kettlebellTypeRaw) != nil, WorkoutType(rawValue: s.workoutTypeRaw) != nil, s.schemaVersion == 1, s.date.timeIntervalSinceReferenceDate.isFinite, s.endedAt?.timeIntervalSinceReferenceDate.isFinite ?? true, s.totalDuration.isFinite, s.totalDuration >= 0, s.pausedDuration.isFinite, s.pausedDuration >= 0, s.restDuration.map({ $0 >= 0 && $0 <= 3600 }) ?? true, s.weight >= 0, s.targetRounds >= 0, s.completedRounds >= 0 else { throw Error.invalid("A session has invalid measurements.") }
+            guard s.resultsData == nil || s.definitionData != nil else { throw Error.invalid("Results require a workout definition.") }
+            if let data = s.definitionData {
+                guard let definition = try? JSONDecoder().decode(WorkoutDefinition.self, from: data), definition.validationError == nil else { throw Error.invalid("A workout definition is invalid.") }
+                if let results = s.resultsData {
+                    guard let decoded = try? JSONDecoder().decode([WorkoutSetResult].self, from: results), Set(decoded.map(\.id)).count == decoded.count,
+                          Set(decoded.map { "\($0.blockID.uuidString):\($0.setIndex)" }).count == decoded.count,
+                          decoded.allSatisfy({ result in
+                              guard let block = definition.blocks.first(where: { $0.id == result.blockID }) else { return false }
+                              return result.setIndex >= 0 && result.setIndex < block.targetSets && result.loadKg.isFinite && result.loadKg > 0 && (1...2).contains(result.bells) && (result.duration ?? 0).isFinite && (result.duration ?? 0) >= 0 && result.repetitions.allSatisfy { $0.reps >= 0 && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                          }) else { throw Error.invalid("Workout results are invalid.") }
+                }
+            }
         }
         for t in archive.templates { guard let definition = try? JSONDecoder().decode(WorkoutDefinition.self, from: t.definitionData), definition.validationError == nil else { throw Error.invalid("A template is invalid.") } }
         for e in archive.equipment where !e.weightKg.isFinite || e.weightKg <= 0 || e.count < 1 { throw Error.invalid("Equipment is invalid.") }
+        for p in archive.programs {
+            guard !p.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let weekdays = try? JSONDecoder().decode([Int].self, from: p.weekdaysData), (2...4).contains(weekdays.count), Set(weekdays).count == weekdays.count, weekdays.allSatisfy({ (1...7).contains($0) }),
+                  let templates = try? JSONDecoder().decode([WorkoutDefinition].self, from: p.templateDefinitionsData), templates.allSatisfy({ $0.validationError == nil }),
+                  (p.nextOverrideData == nil || ({ guard let data = p.nextOverrideData, let definition = try? JSONDecoder().decode(WorkoutDefinition.self, from: data) else { return false }; return definition.validationError == nil })()),
+                  (try? JSONDecoder().decode([UUID].self, from: p.evaluatedSessionIDsData)) != nil,
+                  (try? JSONDecoder().decode([ProgramDecision].self, from: p.decisionHistoryData)) != nil,
+                  (try? JSONDecoder().decode([ProgramReschedule].self, from: p.rescheduleHistoryData)) != nil,
+                  p.abcModeRaw == WorkoutMode.emom.rawValue || p.abcModeRaw == WorkoutMode.rounds.rawValue,
+                  (1...30).contains(p.abcMinutes), (1...20).contains(p.abcRounds), (1...30).contains(p.abcStartMinutes), (1...20).contains(p.abcStartRounds), (1...10).contains(p.pressLadders), (1...10).contains(p.pressStartLadders), (1...2).contains(p.abcBells), (1...2).contains(p.pressBells), p.abcWeightKg.isFinite, p.pressWeightKg.isFinite, p.abcWeightKg > 0, p.pressWeightKg > 0 else { throw Error.invalid("A training program is invalid.") }
+        }
     }
 }
 

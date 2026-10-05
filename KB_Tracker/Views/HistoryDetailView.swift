@@ -55,7 +55,7 @@ struct HistoryDetailView: View {
                         }
                         notesCard
                         Button(savingHealth ? "Saving to Apple Health…" : "Save to Apple Health") { exportHealth() }
-                            .disabled(savingHealth || session.healthExportedAt != nil)
+                            .disabled(savingHealth || (session.healthExportedAt ?? .distantPast) >= session.modifiedAt)
                             .font(.system(size: 15, weight: .semibold)).foregroundColor(AppColors.ink)
                         if !healthState.isEmpty { Text(healthState).font(.caption).foregroundColor(AppColors.ink3) }
                         Button("Compare sessions") { showComparisonPicker = true }
@@ -237,7 +237,7 @@ struct HistoryDetailView: View {
             let ok = await HealthKitService.save(session)
             savingHealth = false
             healthState = ok ? "Saved to Apple Health." : (session.healthExportError ?? "Could not save to Apple Health.")
-            if ok { try? modelContext.save() }
+            if ok { do { try modelContext.save() } catch { actionError = error.localizedDescription } }
         }
     }
 }

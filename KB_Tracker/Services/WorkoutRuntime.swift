@@ -257,12 +257,15 @@ final class WorkoutRuntime: ObservableObject {
         complete(at: date)
     }
 
-    func discard() {
+    @discardableResult
+    func discard() -> Bool {
         do { try ActiveWorkoutStore.clear() }
-        catch { persistenceError = error.localizedDescription; return }
+        catch { persistenceError = error.localizedDescription; return false }
         NotificationService.cancelWorkoutCue()
         LiveActivityService.shared.end(currentRound: completedSetCount,
                                        totalRounds: totalSets, elapsedSeconds: elapsed, mode: "workout")
+        persistenceError = nil
+        return true
     }
 
     func makeSession() -> WorkoutSession {
@@ -314,6 +317,7 @@ final class WorkoutRuntime: ObservableObject {
     }
 
     func retryPersistence() { persist() }
+    func acknowledgePersistenceError() { persistenceError = nil }
 
     private var totalSets: Int { snapshot.definition.blocks.reduce(0) { $0 + $1.targetSets } }
 

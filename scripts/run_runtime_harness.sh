@@ -21,6 +21,7 @@ CLANG_MODULE_CACHE_PATH="$MODULE_CACHE" "$SWIFTC" \
   "$PURE_DEFINITION" \
   "$ROOT/KB_Tracker/Services/ActiveWorkoutStore.swift" \
   "$ROOT/KB_Tracker/Services/WorkoutRuntime.swift" \
+  "$ROOT/KB_Tracker/Services/ProgramService.swift" \
   "$ROOT/scripts/runtime_harness_support.swift" \
   "$ROOT/scripts/runtime_harness.swift" \
   -o "$OUTPUT"

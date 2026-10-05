@@ -30,16 +30,17 @@ struct HistoryView: View {
     // MARK: - Derived totals
 
     private var totalSessions: Int { sessions.count }
-    private var totalRounds: Int { sessions.reduce(0) { $0 + $1.completedRounds } }
+    private var totalRounds: Int { sessions.reduce(0) { $0 + $1.workSets } }
     private var totalHours: Double { sessions.reduce(0.0) { $0 + $1.totalDuration } / 3600 }
 
     private var filteredSessions: [WorkoutSession] {
         let requestedLoad = Double(loadFilter).map(unit.kilograms)
-        sessions.filter { session in
+        return sessions.filter { session in
             let text = "\(session.displayTitle) \(session.notes ?? "")".localizedCaseInsensitiveContains(query)
             let loads = session.definition?.blocks.map(\.loadKg) ?? [Double(session.weight)]
-            let loadMatches = loadFilter.isEmpty || (requestedLoad.map { target in !loads.isEmpty && loads.allSatisfy { abs($0 - target) < 0.0001 } } ?? false)
-            let dateMatches = !useDateRange || (session.date >= Calendar.current.startOfDay(for: startDate) && session.date < Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate))!)
+            let loadMatches = loadFilter.isEmpty || (requestedLoad.map { target in target.isFinite && target > 0 && loads.contains { abs($0 - target) < 0.0001 } } ?? false)
+            let rangeEnd = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate)) ?? endDate
+            let dateMatches = !useDateRange || (session.date >= Calendar.current.startOfDay(for: startDate) && session.date < rangeEnd)
             let statusMatches = statusFilter == 0 || (statusFilter == 1 ? session.isCompleted : !session.isCompleted)
             return text && loadMatches && dateMatches && statusMatches && (selectedType == nil || session.workoutType == selectedType)
         }
@@ -59,7 +60,7 @@ struct HistoryView: View {
                         // top stats
                         HStack(spacing: 8) {
                             Mini(label: "SESSIONS", value: "\(totalSessions)")
-                            Mini(label: "ROUNDS", value: "\(totalRounds)")
+                            Mini(label: "WORK SETS", value: "\(totalRounds)")
                             Mini(label: "HOURS", value: String(format: "%.1f", totalHours))
                         }
                         .padding(.bottom, 18)
@@ -109,6 +110,7 @@ struct HistoryView: View {
             }
         }
         .navigationBarHidden(true)
+        .onChange(of: startDate) { _, value in if endDate < value { endDate = value } }
         .sheet(isPresented: $showManual) { NavigationStack { ManualSessionView() } }
         .fileExporter(isPresented: $showBackupExporter, document: backupDocument, contentType: .json, defaultFilename: "kb-tracker-backup") { result in
             backupDocument = nil
@@ -167,7 +169,7 @@ struct HistoryView: View {
                 Picker("Status", selection: $statusFilter) { Text("All").tag(0); Text("Complete").tag(1); Text("Partial").tag(2) }.pickerStyle(.segmented).frame(maxWidth: 210)
             }
             HStack { TextField("Load (\(unit.rawValue))", text: $loadFilter).textFieldStyle(.roundedBorder); Toggle("Date range", isOn: $useDateRange).font(.caption).fixedSize() }
-            if !loadFilter.isEmpty && Double(loadFilter) == nil { Text("Enter a numeric load in \(unit.rawValue).").font(.caption).foregroundColor(AppColors.red) }
+            if !loadFilter.isEmpty && !(Double(loadFilter).map { $0.isFinite && $0 > 0 } ?? false) { Text("Enter a positive numeric load in \(unit.rawValue).").font(.caption).foregroundColor(AppColors.red) }
             if useDateRange { HStack { DatePicker("From", selection: $startDate, displayedComponents: .date); DatePicker("To", selection: $endDate, in: startDate..., displayedComponents: .date) } }
         }
         .padding(.vertical, 12)
@@ -287,7 +289,7 @@ fileprivate struct SessionRow: View {
             // main — press: reps · ladders; otherwise: done/target · duration
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(workoutTitle)
+                    Text(session.definition == nil ? workoutTitle : session.displayTitle)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(AppColors.ink)
                     Text(session.weightDisplay)
@@ -295,16 +297,16 @@ fileprivate struct SessionRow: View {
                         .foregroundColor(AppColors.ink3)
                 }
                 HStack(spacing: 0) {
-                    Text("\(isPress ? session.totalReps : session.completedRounds)")
+                    Text(session.definition == nil ? "\(isPress ? session.totalReps : session.completedRounds)" : "\(session.workSets)")
                         .font(AppTypography.mono(12.5, weight: .semibold))
                         .foregroundColor(AppColors.ink2)
-                    Text(isPress ? " reps" : "/\(session.targetRounds)")
+                    Text(session.definition == nil ? (isPress ? " reps" : "/\(session.targetRounds)") : " sets")
                         .font(.system(size: 12.5))
                         .foregroundColor(AppColors.ink4)
                     Text("  ·  ")
                         .font(.system(size: 12.5))
                         .foregroundColor(AppColors.ink4)
-                    Text(isPress ? "\(session.completedLadders) ladders" : session.totalDuration.formattedMinutesSecondsPadded)
+                    Text(session.definition == nil ? (isPress ? "\(session.completedLadders) ladders" : session.totalDuration.formattedMinutesSecondsPadded) : "\(session.recordedReps.map { "\($0) reps" } ?? "– reps") · \(session.isCompleted ? "done" : "partial")")
                         .font(AppTypography.mono(12.5, weight: .regular))
                         .foregroundColor(AppColors.ink2)
                 }

@@ -56,6 +56,8 @@ enum ProgramService {
         defer { recordDecision(program: program, sessionID: session.id) }
         let prescribed = session.definition
         let target = prescribed?.workoutType ?? session.workoutType
+        let currentPrescription = (target == .abc || target == .press)
+            ? builtInDefinition(program: program, type: target) : nil
         let wasOverride = program.nextOverride != nil
         if session.isCompleted {
             program.nextIndex += 1
@@ -67,16 +69,27 @@ enum ProgramService {
             program.lastDecision = program.usesTemplates ? "Template completed. Progression is manual." : "Progression is paused."
             return
         }
+        guard let prescribed,
+              let currentPrescription,
+              prescriptionKey(prescribed) == prescriptionKey(currentPrescription) else {
+            clearStreaks(target: target, program: program)
+            program.lastDecision = "This session used an older prescription. Completion was recorded, but the current target was held."
+            return
+        }
         let targetKey = target.rawValue
         program.streakTargetRaw = targetKey
-        let prescriptionKey = prescribed.map { Self.prescriptionKey($0) } ?? "\(session.mode.rawValue):\(session.weight):\(session.targetRounds):\(session.targetLadders)"
+        let prescriptionKey = Self.prescriptionKey(prescribed)
         if target == .press {
             if program.pressStreakKey != prescriptionKey { clearStreaks(target: target, program: program); program.pressStreakKey = prescriptionKey }
         } else if program.abcStreakKey != prescriptionKey {
             clearStreaks(target: target, program: program)
             program.abcStreakKey = prescriptionKey
         }
-        if !session.isCompleted || session.difficulty == .hard {
+        let evidence = resultEvidence(session: session, definition: prescribed)
+        if session.isCompleted && evidence == .unknown {
+            clearStreaks(target: target, program: program)
+            program.lastDecision = "Actual reps were not fully recorded. Target held."
+        } else if !session.isCompleted || evidence == .underTarget || session.difficulty == .hard {
             let count = target == .press ? program.pressStruggleStreak + 1 : program.abcStruggleStreak + 1
             if target == .press { program.pressStruggleStreak = count; program.pressSuccessStreak = 0 }
             else { program.abcStruggleStreak = count; program.abcSuccessStreak = 0 }
@@ -84,7 +97,9 @@ enum ProgramService {
                 reduce(target: target, program: program)
                 clearStreaks(target: target, program: program)
             } else {
-                program.lastDecision = "One hard or incomplete session. Repeat this target."
+                program.lastDecision = evidence == .underTarget
+                    ? "Recorded reps were below the prescription. Repeat this target."
+                    : "One hard or incomplete session. Repeat this target."
             }
         } else if session.difficulty == .easy || session.difficulty == .manageable {
             let count = target == .press ? program.pressSuccessStreak + 1 : program.abcSuccessStreak + 1
@@ -100,6 +115,49 @@ enum ProgramService {
             clearStreaks(target: target, program: program)
             program.lastDecision = "Add a difficulty rating to guide progression. Target held."
         }
+    }
+
+    enum ResultEvidence { case met, underTarget, unknown }
+
+    /// Requires one completed, explicitly logged result for every prescribed slot.
+    static func resultEvidence(session: WorkoutSession,
+                               definition: WorkoutDefinition) -> ResultEvidence {
+        let expectedCount = definition.blocks.reduce(0) { $0 + $1.targetSets }
+        guard session.results.count == expectedCount else { return .unknown }
+        var underTarget = false
+        for block in definition.blocks {
+            let blockResults = session.results.filter { $0.blockID == block.id }
+            guard blockResults.count == block.targetSets else { return .unknown }
+            for index in 0..<block.targetSets {
+                guard let result = blockResults.first(where: { $0.setIndex == index }), result.completed,
+                      result.loadKg == block.loadKg, result.bells == block.bells else { return .unknown }
+                let targets: [String: Int]
+                if block.kind == .ladder {
+                    guard let movement = block.movements.first, !block.rungs.isEmpty else { return .unknown }
+                    targets = [normalizedName(movement.name): block.rungs[index % block.rungs.count] * (movement.perSide ? 2 : 1)]
+                } else {
+                    guard block.movements.allSatisfy({ $0.reps != nil }) else { return .unknown }
+                    var collected: [String: Int] = [:]
+                    for movement in block.movements {
+                        let name = normalizedName(movement.name)
+                        guard collected[name] == nil else { return .unknown }
+                        collected[name] = movement.reps! * (movement.perSide ? 2 : 1)
+                    }
+                    targets = collected
+                }
+                guard result.repetitions.count == targets.count else { return .unknown }
+                let actual = Dictionary(grouping: result.repetitions, by: { normalizedName($0.name) })
+                    .mapValues { $0.reduce(0) { $0 + $1.reps } }
+                guard actual.keys.count == targets.keys.count,
+                      Set(actual.keys) == Set(targets.keys) else { return .unknown }
+                if targets.contains(where: { actual[$0.key, default: -1] < $0.value }) { underTarget = true }
+            }
+        }
+        return underTarget ? .underTarget : .met
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").lowercased()
     }
 
     private static func clearStreaks(target: WorkoutType, program: TrainingProgram) {

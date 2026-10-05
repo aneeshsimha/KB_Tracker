@@ -6,11 +6,33 @@ final class ProgramTests: XCTestCase {
         let result = WorkoutSession()
         result.programID = program.id
         result.workoutType = type
-        result.definition = type == .press ? .builtIn(.press(kettlebellType: .single, weight: 16, targetLadders: 3)) : .builtIn(.emom(kettlebellType: .double, weight: 16, minutes: 10))
+        let definition = ProgramService.builtInDefinition(program: program, type: type)
+        result.definition = definition
+        result.results = fullResults(definition)
         result.endedAt = Date()
         result.isCompleted = completed
         result.difficulty = difficulty
         return result
+    }
+
+    private func fullResults(_ definition: WorkoutDefinition) -> [WorkoutSetResult] {
+        definition.blocks.flatMap { block in
+            (0..<block.targetSets).map { index in
+                let repetitions: [MovementReps]
+                if block.kind == .ladder {
+                    let movement = block.movements[0]
+                    repetitions = [.init(name: movement.name,
+                                         reps: block.rungs[index % block.rungs.count] * (movement.perSide ? 2 : 1))]
+                } else {
+                    repetitions = block.movements.compactMap { movement in
+                        movement.reps.map { .init(name: movement.name, reps: $0 * (movement.perSide ? 2 : 1)) }
+                    }
+                }
+                return WorkoutSetResult(blockID: block.id, setIndex: index,
+                                        repetitions: repetitions, loadKg: block.loadKg,
+                                        bells: block.bells)
+            }
+        }
     }
 
     func testAlternatingTargetsProgressIndependentlyAndEvaluationIsIdempotent() {
@@ -38,6 +60,52 @@ final class ProgramTests: XCTestCase {
         ProgramService.evaluate(session: session(program, type: .press, difficulty: .hard), program: program)
         ProgramService.evaluate(session: session(program, type: .press, difficulty: .hard), program: program)
         XCTAssertEqual(program.pressLadders, 1)
+    }
+
+    func testUnknownResultsHoldAndClearSuccessStreak() {
+        let program = TrainingProgram()
+        program.abcSuccessStreak = 1
+        let workout = session(program, type: .abc, difficulty: .easy)
+        workout.results = []
+        ProgramService.evaluate(session: workout, program: program)
+        XCTAssertEqual(program.abcSuccessStreak, 0)
+        XCTAssertEqual(program.abcMinutes, 10)
+        XCTAssertTrue(program.lastDecision.contains("not fully recorded"))
+    }
+
+    func testUnderTargetActualRepsCountAsStruggleEvenWhenEasy() {
+        let program = TrainingProgram()
+        let first = session(program, type: .abc, difficulty: .easy)
+        first.results[0].repetitions[0].reps = 1
+        ProgramService.evaluate(session: first, program: program)
+        XCTAssertEqual(program.abcStruggleStreak, 1)
+        XCTAssertEqual(program.abcSuccessStreak, 0)
+        let second = session(program, type: .abc, difficulty: .easy)
+        second.results[0].repetitions[0].reps = 1
+        ProgramService.evaluate(session: second, program: program)
+        XCTAssertEqual(program.abcMinutes, 8)
+    }
+
+    func testStaleOfflinePrescriptionAdvancesSequenceButDoesNotMutateCurrentTarget() {
+        let program = TrainingProgram()
+        let stale = session(program, type: .abc, difficulty: .easy)
+        program.abcMinutes = 12
+        ProgramService.evaluate(session: stale, program: program)
+        XCTAssertEqual(program.nextIndex, 1)
+        XCTAssertEqual(program.abcMinutes, 12)
+        XCTAssertEqual(program.abcSuccessStreak, 0)
+        XCTAssertTrue(program.lastDecision.contains("older prescription"))
+        XCTAssertTrue(program.evaluatedSessionIDs.contains(stale.id))
+    }
+
+    func testPerSideLadderTargetsUseTotalAcrossBothSides() {
+        var definition = ProgramService.builtInDefinition(program: TrainingProgram(), type: .press)
+        definition.blocks[0].movements[0].perSide = true
+        let workout = WorkoutSession()
+        workout.results = fullResults(definition)
+        XCTAssertEqual(ProgramService.resultEvidence(session: workout, definition: definition), .met)
+        workout.results[0].repetitions[0].reps -= 1
+        XCTAssertEqual(ProgramService.resultEvidence(session: workout, definition: definition), .underTarget)
     }
 
     func testMissingRatingHoldsAndCapRequiresApprovedBell() {

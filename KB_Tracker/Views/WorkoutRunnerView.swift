@@ -83,8 +83,7 @@ struct WorkoutRunnerView: View {
         }
         .alert("Discard workout?", isPresented: $showDiscard) {
             Button("Discard", role: .destructive) {
-                runtime.discard()
-                dismiss()
+                if runtime.discard() { dismiss() }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -92,9 +91,17 @@ struct WorkoutRunnerView: View {
         }
         .alert("Could not save workout", isPresented: Binding(
             get: { saveError != nil || runtime.persistenceError != nil },
-            set: { if !$0 { saveError = nil } }
+            set: {
+                if !$0 {
+                    saveError = nil
+                    runtime.acknowledgePersistenceError()
+                }
+            }
         )) {
-            Button("OK") { saveError = nil }
+            Button("OK") {
+                saveError = nil
+                runtime.acknowledgePersistenceError()
+            }
         } message: { Text(saveError ?? runtime.persistenceError ?? "Please try again.") }
     }
 

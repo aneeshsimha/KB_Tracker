@@ -235,4 +235,15 @@ struct RuntimeTests {
         _ = runtime.makeSession()
         #expect(ActiveWorkoutStore.load()?.id == runtime.snapshot.id)
     }
+
+    @Test func discardReportsSuccessfulCheckpointRemoval() throws {
+        defer { try? ActiveWorkoutStore.clear() }
+        let clock = Clock()
+        let runtime = WorkoutRuntime(definition: definition(kind: .rounds), now: { clock.date })
+        runtime.start()
+        #expect(ActiveWorkoutStore.load()?.id == runtime.snapshot.id)
+        #expect(runtime.discard())
+        #expect(ActiveWorkoutStore.load() == nil)
+        #expect(runtime.persistenceError == nil)
+    }
 }

@@ -174,6 +174,41 @@ struct RuntimeHarness {
         invalid.blocks[0].loadKg = .nan
         expect(invalid.validationError != nil, "non-finite loads rejected")
 
-        print("runtime_harness: 9 scenarios passed")
+        do {
+            let program = TrainingProgram()
+            let definition = ProgramService.builtInDefinition(program: program, type: .abc)
+            func session(reps: Int) -> WorkoutSession {
+                let session = WorkoutSession()
+                session.programID = program.id
+                session.workoutType = .abc
+                session.definition = definition
+                session.endedAt = Date()
+                session.isCompleted = true
+                session.difficulty = .easy
+                session.results = definition.blocks.flatMap { block in
+                    (0..<block.targetSets).map { index in
+                        WorkoutSetResult(blockID: block.id, setIndex: index,
+                            repetitions: block.movements.map { .init(name: $0.name, reps: $0.name == "Clean" ? reps : $0.reps!) },
+                            loadKg: block.loadKg, bells: block.bells)
+                    }
+                }
+                return session
+            }
+            ProgramService.evaluate(session: session(reps: 1), program: program)
+            ProgramService.evaluate(session: session(reps: 1), program: program)
+            expect(program.abcMinutes == 8, "under-target actual reps reduce after two struggles")
+
+            let staleProgram = TrainingProgram()
+            let staleDefinition = ProgramService.builtInDefinition(program: staleProgram, type: .abc)
+            let stale = WorkoutSession()
+            stale.programID = staleProgram.id; stale.workoutType = .abc; stale.definition = staleDefinition
+            stale.endedAt = Date(); stale.isCompleted = true; stale.difficulty = .easy
+            staleProgram.abcMinutes = 12
+            ProgramService.evaluate(session: stale, program: staleProgram)
+            expect(staleProgram.nextIndex == 1 && staleProgram.abcMinutes == 12,
+                   "stale session advances sequence but holds current target")
+        }
+
+        print("runtime_harness: 10 scenarios passed")
     }
 }

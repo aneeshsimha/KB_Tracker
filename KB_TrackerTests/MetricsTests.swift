@@ -3,6 +3,31 @@ import Foundation
 @testable import KB_Tracker
 
 struct MetricsTests {
+    private func paceSession(definition: WorkoutDefinition, reps: Int = 10,
+                             load: Double? = nil) -> WorkoutSession {
+        let session = WorkoutSession()
+        session.definition = definition
+        session.isCompleted = true
+        session.totalDuration = 300
+        session.results = definition.blocks.flatMap { block in
+            (0..<block.targetSets).map { index in
+                let movements: [MovementReps]
+                if block.kind == .ladder {
+                    movements = [.init(name: block.movements[0].name,
+                                       reps: block.rungs[index % block.rungs.count])]
+                } else {
+                    movements = block.movements.compactMap { movement in
+                        movement.reps.map { .init(name: movement.name, reps: reps) }
+                    }
+                }
+                return WorkoutSetResult(blockID: block.id, setIndex: index, duration: 10,
+                                        repetitions: movements, loadKg: load ?? block.loadKg,
+                                        bells: block.bells)
+            }
+        }
+        return session
+    }
+
     @Test func completionRateUsesRecordedSets() {
         let session = WorkoutSession()
         session.results = [
@@ -44,5 +69,45 @@ struct MetricsTests {
             WorkoutSetResult(blockID: UUID(), setIndex: 1, repetitions: [.init(name: "Swing", reps: 10)], loadKg: 20, bells: 1)
         ]
         #expect(SessionMetrics.movementVolume([session])["Swing"] == 360)
+    }
+
+    @Test func automaticSessionWithoutActualResultsIsNotPaceEligible() {
+        let definition = WorkoutDefinition(name: "Rounds", blocks: [WorkoutBlock(rounds: 2)])
+        let session = WorkoutSession()
+        session.definition = definition
+        session.isCompleted = true
+        session.totalDuration = 20
+        session.sourceRaw = "runner"
+        #expect(!SessionMetrics.paceEligible(session))
+    }
+
+    @Test func fewerRepsCannotBecomeAFasterComparablePace() {
+        let block = WorkoutBlock(movements: [.init(name: "Swing", reps: 10)], rounds: 1)
+        let definition = WorkoutDefinition(name: "Swing", blocks: [block])
+        let complete = paceSession(definition: definition, reps: 10)
+        let underTarget = paceSession(definition: definition, reps: 9)
+        underTarget.totalDuration = 5
+        #expect(SessionMetrics.paceEligible(complete))
+        #expect(!SessionMetrics.paceEligible(underTarget))
+        #expect(!SessionMetrics.isComparablePace(complete, underTarget))
+    }
+
+    @Test func mismatchedEquipmentAndDuplicateSlotsAreRejected() {
+        let definition = WorkoutDefinition(name: "Swing", blocks: [WorkoutBlock(rounds: 2)])
+        let wrongLoad = paceSession(definition: definition, load: 20)
+        #expect(!SessionMetrics.paceEligible(wrongLoad))
+        let duplicate = paceSession(definition: definition)
+        duplicate.results[1].setIndex = 0
+        #expect(!SessionMetrics.paceEligible(duplicate))
+    }
+
+    @Test func timedBlockWithoutPrescribedRepsCanBePaceEligible() {
+        let block = WorkoutBlock(name: "Mobility", kind: .warmup,
+                                 movements: [.init(name: "Flow")], rounds: 1,
+                                 workSeconds: 60)
+        let definition = WorkoutDefinition(name: "Warmup", blocks: [block])
+        let session = paceSession(definition: definition)
+        #expect(session.results[0].repetitions.isEmpty)
+        #expect(SessionMetrics.paceEligible(session))
     }
 }

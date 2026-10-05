@@ -64,7 +64,7 @@ enum SessionMetrics {
     }
 
     static func paceEligible(_ session: WorkoutSession) -> Bool {
-        session.isCompleted && measuredDuration(session) != nil && (session.sourceRaw != "manual" || manualPaceIsComplete(session))
+        session.isCompleted && measuredDuration(session) != nil && prescriptionPaceIsComplete(session)
     }
 
     static func measuredDuration(_ session: WorkoutSession) -> TimeInterval? {
@@ -72,18 +72,45 @@ enum SessionMetrics {
         return session.totalDuration
     }
 
-    private static func manualPaceIsComplete(_ session: WorkoutSession) -> Bool {
+    private static func prescriptionPaceIsComplete(_ session: WorkoutSession) -> Bool {
         guard let definition = session.definition else { return false }
         let target = definition.blocks.reduce(0) { $0 + $1.targetSets }
         let completed = session.results.filter(\.completed)
-        guard target > 0, completed.count == target,
+        guard target > 0, session.results.count == target, completed.count == target,
               completed.allSatisfy({ ($0.duration ?? 0).isFinite && ($0.duration ?? 0) > 0 }) else { return false }
-        let blocks = Dictionary(uniqueKeysWithValues: definition.blocks.map { ($0.id, $0) })
-        return completed.allSatisfy { result in
-            guard let block = blocks[result.blockID] else { return false }
-            let names = Set(result.repetitions.map { $0.name.lowercased() })
-            return Set(block.movements.map { $0.name.lowercased() }).isSubset(of: names)
+        var seen = Set<String>()
+        for result in completed {
+            guard let block = definition.blocks.first(where: { $0.id == result.blockID }),
+                  result.setIndex >= 0, result.setIndex < block.targetSets,
+                  result.loadKg == block.loadKg, result.bells == block.bells else { return false }
+            let slot = "\(result.blockID.uuidString):\(result.setIndex)"
+            guard seen.insert(slot).inserted else { return false }
+
+            var actual: [String: Int] = [:]
+            for movement in result.repetitions {
+                let name = normalizedName(movement.name)
+                guard !name.isEmpty, movement.reps >= 0, actual[name] == nil else { return false }
+                actual[name] = movement.reps
+            }
+            if block.kind == .ladder {
+                guard let movement = block.movements.first, !block.rungs.isEmpty,
+                      actual[normalizedName(movement.name), default: -1]
+                        >= block.rungs[result.setIndex % block.rungs.count] * (movement.perSide ? 2 : 1)
+                else { return false }
+            } else {
+                if block.movements.contains(where: { $0.reps == nil }) &&
+                    block.kind != .warmup && block.kind != .cooldown { return false }
+                for movement in block.movements where movement.reps != nil {
+                    let required = movement.reps! * (movement.perSide ? 2 : 1)
+                    guard actual[normalizedName(movement.name), default: -1] >= required else { return false }
+                }
+            }
         }
+        return seen.count == target
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").lowercased()
     }
 
     private static func sum<T: BinaryInteger>(_ values: [T]) -> T? { values.isEmpty ? nil : values.reduce(0, +) }
