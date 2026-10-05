@@ -20,7 +20,7 @@ Recorded measurements are distinct from legacy estimates. Pace comparisons requi
 
 ## Verification
 
-- `sh scripts/run_runtime_harness.sh` executes production runtime and recovery-store code using the standalone Command Line Tools. iOS services and SwiftData persistence are test doubles in this harness; it does not substitute for iOS verification.
+- `sh scripts/run_runtime_harness.sh` executes production runtime logic using the standalone Command Line Tools. Each run uses an isolated temporary directory and a copy of the recovery store that retains atomic writes but omits iOS file protection, which can prevent macOS CLI reads while the screen is locked. iOS services and SwiftData persistence are test doubles; simulator tests exercise the unchanged production recovery store. This harness does not substitute for iOS verification.
 - `.github/workflows/ios.yml` builds the app and widget with Xcode 26.2 on macOS 26 and runs the simulator test suite.
 - Swift Testing suites cover timer edge cases, progression, definition validation, metrics, backup behavior, repository idempotency, and additive migration from the legacy model.
 - UI tests cover representative preset and workout flows. Signed-device verification below remains separate from simulator tests.

@@ -127,9 +127,11 @@ struct RuntimeHarness {
             clock.advance(60)
             runtime.startNextBlock()
             expect(runtime.elapsed == elapsed, "between-block setup excluded")
+            expect(runtime.persistenceError == nil,
+                   "checkpoint write failed: \(runtime.persistenceError ?? "unknown I/O error")")
             let restored = ActiveWorkoutStore.load()
             expect(restored?.definition == definition && restored?.results.count == 1,
-                   "checkpoint contains definition and results")
+                   "checkpoint read failed or did not contain the full definition/results")
         }
 
         do {
@@ -165,6 +167,8 @@ struct RuntimeHarness {
             expect(runtime.elapsed == duration, "completed duration frozen")
             expect(audio.complete == 1, "completion cue exactly once")
             runtime.undo()
+            expect(runtime.persistenceError == nil,
+                   "undo checkpoint write failed: \(runtime.persistenceError ?? "unknown I/O error")")
             let restored = ActiveWorkoutStore.load()
             expect(restored?.phase == .working && restored?.endedAt == nil && restored?.results.isEmpty == true,
                    "undo persists complete restored state")
