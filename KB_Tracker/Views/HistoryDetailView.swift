@@ -71,6 +71,7 @@ struct HistoryDetailView: View {
             }
         }
         .navigationBarHidden(true)
+        .onChange(of: session.notes) { _, value in notes = value ?? "" }
         .sheet(isPresented: $showEditor) { NavigationStack { ManualSessionView(session: session) } }
         .sheet(isPresented: $showComparisonPicker) {
             NavigationStack {
@@ -94,7 +95,7 @@ struct HistoryDetailView: View {
 
     private var header: some View {
         HStack {
-            IconButton(icon: .back) { commitNotes(); dismiss() }
+            IconButton(icon: .back) { if commitNotes() { dismiss() } }
             Spacer()
             Eyebrow(session.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).uppercased())
             Spacer()
@@ -222,12 +223,21 @@ struct HistoryDetailView: View {
 
     // MARK: - Actions
 
-    private func commitNotes() {
+    @discardableResult
+    private func commitNotes() -> Bool {
         let trimmed = notes.isEmpty ? nil : notes
         if session.notes != trimmed {
             session.notes = trimmed
             session.modifiedAt = .now
-            do { try SessionRepository.save(session, context: modelContext) } catch { actionError = error.localizedDescription }
+        }
+        do {
+            // Notes are already live edits. Persist them without repeatedly
+            // exporting a new Health workout for every keystroke.
+            if modelContext.hasChanges { try modelContext.save() }
+            return true
+        } catch {
+            actionError = error.localizedDescription
+            return false
         }
     }
 

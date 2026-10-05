@@ -206,6 +206,22 @@ struct RuntimeTests {
         #expect(restored.definition == runtime.snapshot.definition)
     }
 
+    @Test func undoAfterSummaryIdleDoesNotAddIdleTimeToWorkout() {
+        let clock = Clock()
+        let runtime = WorkoutRuntime(definition: definition(kind: .warmup, rounds: 1, work: 10),
+                                     now: { clock.date })
+        runtime.start()
+        clock.advance(TimeInterval(WorkoutParameters.getReadySeconds + 10))
+        runtime.refresh()
+        #expect(runtime.isComplete)
+        #expect(runtime.elapsed == 10)
+        clock.advance(90)
+        runtime.undo()
+        #expect(runtime.snapshot.phase == .working)
+        #expect(runtime.elapsed == 10)
+        #expect(runtime.snapshot.results.isEmpty)
+    }
+
     @Test func missedEmomSlotsNeverCountAsCompletedSets() {
         let clock = Clock()
         let audio = AudioSpy()

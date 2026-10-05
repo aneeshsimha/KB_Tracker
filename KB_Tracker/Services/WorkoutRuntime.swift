@@ -44,6 +44,11 @@ final class WorkoutRuntime: ObservableObject {
         guard let block else { return false }
         return snapshot.results.contains { $0.blockID == block.id && $0.setIndex == snapshot.setIndex }
     }
+    var canUndoCurrentBlock: Bool {
+        guard let result = snapshot.results.last,
+              snapshot.definition.blocks.indices.contains(snapshot.blockIndex) else { return false }
+        return result.blockID == snapshot.definition.blocks[snapshot.blockIndex].id
+    }
     private var getReadySeconds: Int { snapshot.getReadySeconds ?? WorkoutParameters.getReadySeconds }
     var elapsed: TimeInterval {
         guard let startedAt = snapshot.startedAt else { return 0 }
@@ -210,6 +215,9 @@ final class WorkoutRuntime: ObservableObject {
               snapshot.blockIndex == snapshot.definition.blocks.firstIndex(where: { $0.id == result.blockID })
         else { return }
         let date = now()
+        if snapshot.phase == .complete, let endedAt = snapshot.endedAt {
+            snapshot.pausedDuration += max(0, date.timeIntervalSince(endedAt))
+        }
         displayNow = date
         if snapshot.phase == .waitingNext, let waitingSince = snapshot.phaseStartedAt {
             snapshot.pausedDuration += max(0, (snapshot.pausedAt ?? date).timeIntervalSince(waitingSince))

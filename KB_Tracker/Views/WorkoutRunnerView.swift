@@ -300,6 +300,11 @@ struct WorkoutRunnerView: View {
                 }
             }
             Button("Save session") { save() }.buttonStyle(RunnerPrimaryStyle())
+            if runtime.canUndoCurrentBlock {
+                Button("Undo last set") { runtime.undo() }
+                    .buttonStyle(RunnerSecondaryStyle())
+                    .accessibilityHint("Returns to the final set without counting time spent on this summary")
+            }
             Button("Discard workout") { showDiscard = true }
                 .foregroundStyle(AppColors.red)
         }
