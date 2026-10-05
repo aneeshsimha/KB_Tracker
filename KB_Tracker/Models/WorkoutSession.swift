@@ -91,7 +91,7 @@ extension WorkoutSession {
             let blocks = Dictionary(uniqueKeysWithValues: (definition?.blocks ?? []).map { ($0.id, $0) })
             guard completed.allSatisfy({ result in
                 guard result.totalReps != nil else { return false }
-                guard session.sourceRaw != "manual", let block = blocks[result.blockID], !block.movements.isEmpty else { return true }
+                guard sourceRaw != "manual", let block = blocks[result.blockID], !block.movements.isEmpty else { return true }
                 let recorded = Set(result.repetitions.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
                 let prescribed = Set(block.movements.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
                 return prescribed.isSubset(of: recorded)
@@ -113,7 +113,14 @@ extension WorkoutSession {
         definition ?? .builtIn(WorkoutConfig(workoutType: workoutType, mode: mode, kettlebellType: kettlebellType, weight: weight, targetRounds: max(1, targetRounds), restDuration: restDuration, targetLadders: max(1, targetLadders)))
     }
     // Display string for weight (e.g., "2×20kg" or "20kg")
-    var weightDisplay: String { kettlebellType.weightDisplay(weight) }
+    var weightDisplay: String {
+        let unit = WeightUnit(rawValue: UserDefaults.standard.string(forKey: "kb_weight_unit") ?? "") ?? .kg
+        if let definition {
+            let loads = Array(Set(definition.blocks.map { unit.label($0.loadKg, bells: $0.bells) })).sorted()
+            return loads.joined(separator: " / ")
+        }
+        return unit == .kg ? kettlebellType.weightDisplay(weight) : unit.label(Double(weight), bells: kettlebellType == .double ? 2 : 1)
+    }
 
     // Average set completion time
     var averageSetTime: TimeInterval? {

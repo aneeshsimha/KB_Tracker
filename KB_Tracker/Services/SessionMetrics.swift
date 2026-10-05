@@ -55,20 +55,35 @@ enum SessionMetrics {
     }
 
     static func isComparablePace(_ lhs: WorkoutSession, _ rhs: WorkoutSession) -> Bool {
-        guard lhs.isCompleted, rhs.isCompleted,
+        guard paceEligible(lhs), paceEligible(rhs),
               let lhsDefinition = lhs.definition, let rhsDefinition = rhs.definition,
               lhsDefinition.comparisonKey == rhsDefinition.comparisonKey,
               lhsDefinition.blocks.allSatisfy({ $0.loadKg > 0 && $0.bells > 0 }),
               rhsDefinition.blocks.allSatisfy({ $0.loadKg > 0 && $0.bells > 0 }) else { return false }
-        guard measuredDuration(lhs) != nil && measuredDuration(rhs) != nil else { return false }
-        return [lhs, rhs].allSatisfy { session in
-            session.sourceRaw != "manual" || session.results.contains { ($0.duration ?? 0) > 0 }
-        }
+        return true
+    }
+
+    static func paceEligible(_ session: WorkoutSession) -> Bool {
+        session.isCompleted && measuredDuration(session) != nil && (session.sourceRaw != "manual" || manualPaceIsComplete(session))
     }
 
     static func measuredDuration(_ session: WorkoutSession) -> TimeInterval? {
         guard session.totalDuration.isFinite, session.totalDuration > 0 else { return nil }
         return session.totalDuration
+    }
+
+    private static func manualPaceIsComplete(_ session: WorkoutSession) -> Bool {
+        guard let definition = session.definition else { return false }
+        let target = definition.blocks.reduce(0) { $0 + $1.targetSets }
+        let completed = session.results.filter(\.completed)
+        guard target > 0, completed.count == target,
+              completed.allSatisfy({ ($0.duration ?? 0).isFinite && ($0.duration ?? 0) > 0 }) else { return false }
+        let blocks = Dictionary(uniqueKeysWithValues: definition.blocks.map { ($0.id, $0) })
+        return completed.allSatisfy { result in
+            guard let block = blocks[result.blockID] else { return false }
+            let names = Set(result.repetitions.map { $0.name.lowercased() })
+            return Set(block.movements.map { $0.name.lowercased() }).isSubset(of: names)
+        }
     }
 
     private static func sum<T: BinaryInteger>(_ values: [T]) -> T? { values.isEmpty ? nil : values.reduce(0, +) }

@@ -7,14 +7,18 @@ import SwiftData
 struct StatsView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedPrescription: String?
 
     // MARK: - Derived stats
 
     private var totalSessions: Int { sessions.count }
-    private var totalRounds: Int { sessions.reduce(0) { $0 + $1.completedRounds } }
+    private var totalRounds: Int { sessions.reduce(0) { $0 + $1.workSets } }
     private var totalHours: Double { sessions.reduce(0.0) { $0 + $1.totalDuration } / 3600 }
 
-    private var allSetTimes: [TimeInterval] { sessions.compactMap(SessionMetrics.measuredDuration) }
+    private var prescriptionKeys: [String] { Array(Set(sessions.compactMap { $0.definition?.comparisonKey })).sorted() }
+    private var activeKey: String? { selectedPrescription ?? prescriptionKeys.first }
+    private var cohort: [WorkoutSession] { guard let activeKey else { return [] }; return sessions.filter { $0.definition?.comparisonKey == activeKey && SessionMetrics.paceEligible($0) } }
+    private var allSetTimes: [TimeInterval] { cohort.compactMap(SessionMetrics.measuredDuration) }
     private var avgSetTime: TimeInterval? {
         guard !allSetTimes.isEmpty else { return nil }
         return allSetTimes.reduce(0, +) / Double(allSetTimes.count)
@@ -32,7 +36,8 @@ struct StatsView: View {
                 return WeekBucket(weekOffset: weekOffset, sessionCount: 0, setTimes: [], totalReps: 0)
             }
             let weekSessions = sessions.filter { weekInterval.contains($0.date) }
-            let setTimes = weekSessions.compactMap(SessionMetrics.measuredDuration)
+            let paceSessions = cohort.filter { weekInterval.contains($0.date) }
+            let setTimes = paceSessions.compactMap(SessionMetrics.measuredDuration)
             let totalReps = weekSessions.compactMap(\.recordedReps).reduce(0, +)
             return WeekBucket(
                 weekOffset: weekOffset,
@@ -89,19 +94,21 @@ struct StatsView: View {
                             // Lifetime totals
                             HStack(spacing: 8) {
                                 StatTile(label: "SESSIONS", value: "\(totalSessions)")
-                                StatTile(label: "ROUNDS", value: "\(totalRounds)")
+                                StatTile(label: "WORK SETS", value: "\(totalRounds)")
                                 StatTile(label: "HOURS", value: String(format: "%.1f", totalHours))
                             }
 
+                            prescriptionPicker
                             weeklyCard("WEEKLY SESSIONS", volumeSeries, mode: .rounds)
-                            weeklyCard("WEEKLY AVG SET TIME", avgSetSeries, mode: .emom)
-                            weeklyCard("WEEKLY REPS", repsSeries, mode: .rounds)
+                            weeklyCard("COHORT SESSION TIME", avgSetSeries, mode: .emom)
+                            weeklyCard("WEEKLY RECORDED REPS", repsSeries, mode: .rounds)
                             movementCard
+                            recordsCard
 
                             // Lifetime averages
                             HStack(spacing: 8) {
-                                StatTile(label: "AVG SET", value: avgSetTime.map { $0.formattedMinutesSecondsPadded } ?? "–")
-                                StatTile(label: "BEST SET", value: bestSetTime.map { $0.formattedMinutesSecondsPadded } ?? "–")
+                                StatTile(label: "AVG SESSION", value: avgSetTime.map { $0.formattedMinutesSecondsPadded } ?? "–")
+                                StatTile(label: "FASTEST SESSION", value: bestSetTime.map { $0.formattedMinutesSecondsPadded } ?? "–")
                             }
                         }
                         .padding(.horizontal, 20)
@@ -137,6 +144,21 @@ struct StatsView: View {
         }
     }
 
+    private var prescriptionPicker: some View {
+        Menu {
+            ForEach(prescriptionKeys, id: \.self) { key in
+                Button(cohortName(for: key)) { selectedPrescription = key }
+            }
+        } label: {
+            HStack { Eyebrow("PACE COHORT"); Spacer(); Text(activeKey.map(cohortName(for:)) ?? "No comparable sessions").font(.caption); Image(systemName: "chevron.down") }
+                .padding(14).kbCard()
+        }
+    }
+
+    private func cohortName(for key: String) -> String {
+        sessions.first(where: { $0.definition?.comparisonKey == key })?.displayTitle ?? "Prescription"
+    }
+
     private var movementCard: some View {
         let movements = SessionMetrics.movementReps(sessions).sorted { $0.value > $1.value }
         let volume = SessionMetrics.movementVolume(sessions)
@@ -147,6 +169,19 @@ struct StatsView: View {
             else { ForEach(movements, id: \.key) { Text("\($0.key)  \($0.value) reps  ·  \(volume[$0.key, default: 0].formatted(.number.precision(.fractionLength(0...1)))) kg").font(AppTypography.mono(14)).foregroundColor(AppColors.ink) } }
             Text("Completion rate: \(completion.isEmpty ? "–" : (completion.reduce(0, +) / Double(completion.count)).formatted(.percent.precision(.fractionLength(0))))").font(.caption).foregroundColor(AppColors.ink3)
             Text("Only actual recorded reps are included; estimates are excluded.").font(.caption).foregroundColor(AppColors.ink4)
+        }.padding(16).kbCard()
+    }
+
+    private var recordsCard: some View {
+        let fastest = cohort.compactMap(SessionMetrics.measuredDuration).min()
+        let highestVolume = sessions.compactMap(\.recordedVolume).max()
+        let highestReps = sessions.compactMap(\.recordedReps).max()
+        return VStack(alignment: .leading, spacing: 8) {
+            Eyebrow("PERSONAL RECORDS")
+            Text("Fastest matching session  \(fastest?.formattedMinutesSecondsPadded ?? "–")").font(AppTypography.mono(14))
+            Text("Highest recorded volume  \(highestVolume.map { $0.formatted(.number.precision(.fractionLength(0...1))) + " kg" } ?? "–")").font(AppTypography.mono(14))
+            Text("Highest recorded reps  \(highestReps.map(String.init) ?? "–")").font(AppTypography.mono(14))
+            Text("Pace records use the selected exact prescription; reps and volume are actual recorded values.").font(.caption).foregroundColor(AppColors.ink4)
         }.padding(16).kbCard()
     }
 }

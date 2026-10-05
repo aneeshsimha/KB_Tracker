@@ -12,6 +12,13 @@ struct MetricsTests {
         #expect(SessionMetrics.completionRate(session) == 0.5)
     }
 
+    @Test func completionRateUsesPrescriptionTargetNotLoggedResultCount() {
+        var block = WorkoutBlock(); block.rounds = 10
+        let session = WorkoutSession(); session.definition = WorkoutDefinition(name: "Ten", blocks: [block])
+        session.results = (0..<3).map { WorkoutSetResult(blockID: block.id, setIndex: $0, loadKg: 16, bells: 1, completed: true) }
+        #expect(SessionMetrics.completionRate(session) == 0.3)
+    }
+
     @Test func testPaceDoesNotCompareDifferentPrescriptions() {
         let leftDefinition = WorkoutDefinition(name: "A", blocks: [WorkoutBlock()])
         var rightBlock = WorkoutBlock(); rightBlock.rounds = 9

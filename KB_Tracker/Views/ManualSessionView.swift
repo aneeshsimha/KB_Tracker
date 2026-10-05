@@ -41,11 +41,11 @@ struct ManualSessionView: View {
             Section("Actual results") {
                 ForEach($resultRows) { $row in
                     VStack(alignment: .leading) {
-                        TextField("Movement", text: $row.movement)
-                        HStack {
-                            TextField("Reps (optional)", text: $row.reps).keyboardType(.numberPad)
-                            TextField("Set duration seconds (optional)", text: $row.duration).keyboardType(.decimalPad)
+                        ForEach($row.measurements) { $measurement in
+                            HStack { TextField("Movement", text: $measurement.name); TextField("Reps (optional)", text: $measurement.reps).keyboardType(.numberPad) }
                         }
+                        Button("Add movement") { row.measurements.append(.init()) }.font(.caption)
+                        TextField("Set duration seconds (optional)", text: $row.duration).keyboardType(.decimalPad)
                         Toggle("Set completed", isOn: $row.completed).font(.caption)
                     }
                 }
@@ -68,12 +68,12 @@ struct ManualSessionView: View {
     private func save() {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty, load.isFinite, load > 0, (1...2).contains(bells) else { error = "Enter a workout name and valid load."; return }
-        guard durationText.isEmpty || (Double(durationText).map { $0.isFinite && $0 > 0 } ?? false), resultRows.allSatisfy({ ($0.reps.isEmpty || (Int($0.reps).map { $0 >= 0 } ?? false)) && ($0.duration.isEmpty || (Double($0.duration).map { $0.isFinite && $0 >= 0 } ?? false)) }) else { error = "Reps and durations must be non-negative numbers."; return }
+        guard durationText.isEmpty || (Double(durationText).map { $0.isFinite && $0 > 0 } ?? false), resultRows.allSatisfy({ $0.measurements.allSatisfy { $0.reps.isEmpty || (Int($0.reps).map { $0 >= 0 } ?? false) } && ($0.duration.isEmpty || (Double($0.duration).map { $0.isFinite && $0 >= 0 } ?? false)) }) else { error = "Reps and durations must be non-negative numbers."; return }
         let session = editing ?? WorkoutSession()
         let isManual = editing == nil || session.sourceRaw == "manual"
         let blockID = session.definition?.blocks.first?.id ?? UUID()
         if isManual {
-            let movements = resultRows.compactMap { row -> WorkoutMovement? in let name = row.movement.trimmingCharacters(in: .whitespacesAndNewlines); return name.isEmpty ? nil : WorkoutMovement(name: name) }
+            let movements = resultRows.flatMap(\.measurements).compactMap { row -> WorkoutMovement? in let name = row.name.trimmingCharacters(in: .whitespacesAndNewlines); return name.isEmpty ? nil : WorkoutMovement(name: name) }
             let block = WorkoutBlock(id: blockID, name: cleanTitle, kind: .rounds, movements: movements.isEmpty ? [WorkoutMovement(name: "Recorded movement")] : movements, loadKg: load, bells: bells, rounds: max(1, resultRows.count), workSeconds: 60, restSeconds: 0)
             session.definition = WorkoutDefinition(id: session.definition?.id ?? UUID(), name: cleanTitle, workoutType: .custom, blocks: [block])
             session.weight = Int(load.rounded()); session.kettlebellType = bells == 2 ? .double : .single
@@ -94,22 +94,21 @@ struct ManualSessionView: View {
 
 private struct ManualResult: Identifiable {
     var id = UUID()
-    var movement = ""
-    var reps = ""
+    var measurements: [ManualMeasurement] = [.init()]
     var duration = ""
     var completed = true
     var originalBlockID: UUID? = nil
     var originalLoad: Double? = nil
     var originalBells: Int? = nil
-    var originalRepetitions: [MovementReps] = []
     var originalSetIndex: Int? = nil
     init() {}
     init(_ result: WorkoutSetResult) {
-        id = result.id; movement = result.repetitions.first?.name ?? ""; reps = result.totalReps.map(String.init) ?? ""; duration = result.duration.map { String($0) } ?? ""; completed = result.completed; originalBlockID = result.blockID; originalLoad = result.loadKg; originalBells = result.bells; originalRepetitions = result.repetitions; originalSetIndex = result.setIndex
+        id = result.id; measurements = result.repetitions.isEmpty ? [.init()] : result.repetitions.map { .init(name: $0.name, reps: String($0.reps)) }; duration = result.duration.map { String($0) } ?? ""; completed = result.completed; originalBlockID = result.blockID; originalLoad = result.loadKg; originalBells = result.bells; originalSetIndex = result.setIndex
     }
     func result(blockID: UUID, index: Int, load: Double, bells: Int) -> WorkoutSetResult {
-        let unchanged = movement == originalRepetitions.first?.name && reps == originalRepetitions.reduce(0, { $0 + $1.reps }).description
-        let actual = movement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || Int(reps) == nil ? [] : [.init(name: movement, reps: Int(reps)!)]
-        return WorkoutSetResult(id: id, blockID: originalBlockID ?? blockID, setIndex: originalSetIndex ?? index, duration: Double(duration), repetitions: unchanged ? originalRepetitions : actual, loadKg: originalLoad ?? load, bells: originalBells ?? bells, completed: completed)
+        let actual = measurements.compactMap { value -> MovementReps? in let name = value.name.trimmingCharacters(in: .whitespacesAndNewlines); guard !name.isEmpty, let reps = Int(value.reps) else { return nil }; return .init(name: name, reps: reps) }
+        return WorkoutSetResult(id: id, blockID: originalBlockID ?? blockID, setIndex: originalSetIndex ?? index, duration: Double(duration), repetitions: actual, loadKg: originalLoad ?? load, bells: originalBells ?? bells, completed: completed)
     }
 }
+
+private struct ManualMeasurement: Identifiable { var id = UUID(); var name = ""; var reps = "" }

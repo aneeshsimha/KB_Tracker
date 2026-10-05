@@ -21,7 +21,7 @@ enum WorkoutExporter {
         let details: [[String]] = results.isEmpty ? [["", "", "", "", "", "", "", "", ""]] : results.map { result in
             let block = blocks.first { $0.id == result.blockID }
             let reps = result.repetitions.map { "\($0.name):\($0.reps)" }.joined(separator: "|")
-            return [block.flatMap { blocks.firstIndex(of: $0) }.map(String.init) ?? "", block?.name ?? "", block?.kind.rawValue ?? "", result.repetitions.map(\.name).joined(separator: "|") , reps, String(result.loadKg), String(result.bells), result.duration.map(String.init) ?? "", result.completed ? "true" : "false"]
+            return [block.flatMap { blocks.firstIndex(of: $0) }.map(String.init) ?? "", block?.name ?? "", block?.kind.rawValue ?? "", result.repetitions.map(\.name).joined(separator: "|") , reps, String(result.loadKg), String(result.bells), result.duration.map { String($0) } ?? "", result.completed ? "true" : "false"]
         }
         return details.map { fields in (base + fields + [s.notes ?? "", s.healthWorkoutID ?? ""]).map(csvField).joined(separator: ",") }.joined(separator: "\n")
     }
